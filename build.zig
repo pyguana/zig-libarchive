@@ -27,7 +27,7 @@ pub fn build(b: *std.Build) void {
         .ARCHIVE_ACL_DARWIN = null,
         .ARCHIVE_ACL_FREEBSD = null,
         .ARCHIVE_ACL_FREEBSD_NFS4 = null,
-        .ARCHIVE_ACL_LIBACL = true,
+        .ARCHIVE_ACL_LIBACL = null,
         .ARCHIVE_ACL_LIBRICHACL = null,
         .ARCHIVE_ACL_SUNOS = null,
         .ARCHIVE_ACL_SUNOS_NFS4 = null,
