@@ -14,6 +14,57 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const config_h = getConfigHeader(b, upstream, target);
+
+    const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar") orelse false;
+
+    const package_name = package["lib".len..];
+    const libarchive_module = b.addModule(package_name, .{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+
+    const lib = b.addLibrary(.{
+        .name = package_name,
+        .root_module = libarchive_module,
+        .linkage = .static,
+    });
+    lib.addConfigHeader(config_h);
+    lib.addCSourceFiles(.{
+        .root = upstream.path("libarchive"),
+        .files = libarchive_src_files,
+        .flags = &.{"-DHAVE_CONFIG_H=1"},
+    });
+    lib.linkLibrary(zlib.artifact("z"));
+
+    if (enable_bsdtar) {
+        const bsdtar = b.addExecutable(.{
+            .name = "bsdtar",
+            .linkage = .static,
+        });
+        bsdtar.addConfigHeader(config_h);
+        bsdtar.addCSourceFiles(.{
+            .root = upstream.path("tar"),
+            .files = &.{
+                "bsdtar.c",
+                "bsdtar_windows.c",
+                "cmdline.c",
+                "creation_set.c",
+                "read.c",
+                "subst.c",
+                "util.c",
+                "write.c",
+            },
+            .flags = &.{"-DHAVE_CONFIG_H=1"},
+        });
+        b.installArtifact(bsdtar);
+    }
+
+    b.installArtifact(lib);
+}
+
+inline fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.Build.ResolvedTarget) *std.Build.Step.ConfigHeader {
     const config_options = .{
         .ARCHIVE_ACL_DARWIN = null,
         .ARCHIVE_ACL_FREEBSD = null,
@@ -505,26 +556,7 @@ pub fn build(b: *std.Build) void {
         .uintptr_t = null,
     };
 
-    const config_h = b.addConfigHeader(.{ .style = .{ .autoconf = upstream.path("config.h.in") } }, config_options);
-
-    const libarchive_module = b.addModule(package["lib".len..], .{
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const lib = b.addLibrary(.{
-        .name = package["lib".len..],
-        .root_module = libarchive_module,
-        .linkage = .static,
-    });
-    lib.addConfigHeader(config_h);
-    lib.addCSourceFiles(.{
-        .root = upstream.path("libarchive"),
-        .files = libarchive_src_files,
-        .flags = &.{"-DHAVE_CONFIG_H=1"},
-    });
-    lib.linkLibrary(zlib.artifact("z"));
-    b.installArtifact(lib);
+    return b.addConfigHeader(.{ .style = .{ .autoconf = upstream.path("config.h.in") } }, config_options);
 }
 
 const libarchive_src_files = &.{
