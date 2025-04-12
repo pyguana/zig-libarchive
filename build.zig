@@ -16,7 +16,7 @@ pub fn build(b: *std.Build) void {
 
     const config_h = getConfigHeader(b, upstream, target);
 
-    const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar") orelse false;
+    const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar") orelse true;
 
     const package_name = package["lib".len..];
     const libarchive_module = b.addModule(package_name, .{
@@ -25,23 +25,23 @@ pub fn build(b: *std.Build) void {
         .link_libc = true,
     });
 
-    const lib = b.addLibrary(.{
+    const libarchive = b.addLibrary(.{
         .name = package_name,
         .root_module = libarchive_module,
         .linkage = .static,
     });
-    lib.addConfigHeader(config_h);
-    lib.addCSourceFiles(.{
+    libarchive.addConfigHeader(config_h);
+    libarchive.addCSourceFiles(.{
         .root = upstream.path("libarchive"),
         .files = libarchive_src_files,
         .flags = &.{"-DHAVE_CONFIG_H=1"},
     });
-    lib.linkLibrary(zlib.artifact("z"));
+    libarchive.linkLibrary(zlib.artifact("z"));
 
     if (enable_bsdtar) {
-        const bsdtar = b.addExecutable(.{
-            .name = "bsdtar",
-            .linkage = .static,
+        const bsdtar = b.addModule("bsdtar", .{
+            .target = target,
+            .optimize = optimize,
         });
         bsdtar.addConfigHeader(config_h);
         bsdtar.addCSourceFiles(.{
@@ -58,7 +58,13 @@ pub fn build(b: *std.Build) void {
             },
             .flags = &.{"-DHAVE_CONFIG_H=1"},
         });
-        b.installArtifact(bsdtar);
+        bsdtar.linkLibrary(libarchive);
+        const bsdtar_exe = b.addExecutable(.{
+            .name = "bsdtar",
+            .root_module = bsdtar,
+            .linkage = .static,
+        });
+        b.installArtifact(bsdtar_exe);
     }
 
     b.installArtifact(lib);
