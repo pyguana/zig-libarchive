@@ -14,15 +14,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addStaticLibrary(.{
-        .name = package["lib".len..],
-        .target = target,
-        .optimize = optimize,
-    });
-    lib.linkLibrary(zlib.artifact("z"));
-    lib.addConfigHeader(b.addConfigHeader(.{
-        .style = .{ .autoconf = upstream.path("config.h.in") },
-    }, .{
+    const config_options = .{
         .ARCHIVE_ACL_DARWIN = null,
         .ARCHIVE_ACL_FREEBSD = null,
         .ARCHIVE_ACL_FREEBSD_NFS4 = null,
@@ -511,12 +503,27 @@ pub fn build(b: *std.Build) void {
         .uint8_t = null,
         .uintmax_t = null,
         .uintptr_t = null,
-    }));
+    };
+
+    const config_h = b.addConfigHeader(.{ .style = .{ .autoconf = upstream.path("config.h.in") } }, config_options);
+
+    const libarchive_module = b.addModule(package["lib".len..], .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const lib = b.addLibrary(.{
+        .name = package["lib".len..],
+        .root_module = libarchive_module,
+        .linkage = .static,
+    });
+    lib.addConfigHeader(config_h);
     lib.addCSourceFiles(.{
         .root = upstream.path("libarchive"),
         .files = libarchive_src_files,
         .flags = &.{"-DHAVE_CONFIG_H=1"},
     });
+    lib.linkLibrary(zlib.artifact("z"));
     b.installArtifact(lib);
 }
 
