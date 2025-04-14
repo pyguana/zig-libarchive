@@ -16,9 +16,9 @@ pub fn build(b: *std.Build) void {
 
     const config_h = getConfigHeader(b, upstream, target);
 
-    const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
     const enable_bsdcat = b.option(bool, "enable-bsdcat", "enable build of bsdcat (default: true)") orelse true;
     const enable_bsdcpio = b.option(bool, "enable-bsdcpio", "enable build of bsdcpio (default: true)") orelse true;
+    const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
 
     const package_name = package["lib".len..];
     const defs = &.{"-DHAVE_CONFIG_H=1"};
@@ -61,6 +61,50 @@ pub fn build(b: *std.Build) void {
         .linkage = .static,
     });
 
+    if (enable_bsdcat) {
+        const bsdcat = b.addModule("bsdcat", .{
+            .target = target,
+            .optimize = optimize,
+        });
+        bsdcat.addConfigHeader(config_h);
+        bsdcat.addCSourceFiles(.{
+            .root = upstream.path("cat"),
+            .files = bsdcat_src_files,
+        });
+        bsdcat.addIncludePath(upstream.path("libarchive"));
+        bsdcat.linkLibrary(libarchive_static);
+        bsdcat.addIncludePath(upstream.path("libarchive_fe"));
+        bsdcat.linkLibrary(libarchive_fe_static);
+
+        const bsdcat_exe = b.addExecutable(.{
+            .name = "bsdcat",
+            .root_module = bsdcat,
+        });
+        b.installArtifact(bsdcat_exe);
+    }
+
+    if (enable_bsdcpio) {
+        const bsdcpio = b.addModule("bsdcpio", .{
+            .target = target,
+            .optimize = optimize,
+        });
+        bsdcpio.addConfigHeader(config_h);
+        bsdcpio.addCSourceFiles(.{
+            .root = upstream.path("cpio"),
+            .files = bsdcpio_src_files,
+        });
+        bsdcpio.addIncludePath(upstream.path("libarchive"));
+        bsdcpio.linkLibrary(libarchive_static);
+        bsdcpio.addIncludePath(upstream.path("libarchive_fe"));
+        bsdcpio.linkLibrary(libarchive_fe_static);
+
+        const bsdcpio_exe = b.addExecutable(.{
+            .name = "bsdcpio",
+            .root_module = bsdcpio,
+        });
+        b.installArtifact(bsdcpio_exe);
+    }
+
     if (enable_bsdtar) {
         const bsdtar = b.addModule("bsdtar", .{
             .target = target,
@@ -82,28 +126,6 @@ pub fn build(b: *std.Build) void {
             .root_module = bsdtar,
         });
         b.installArtifact(bsdtar_exe);
-    }
-
-    if (enable_bsdcat) {
-        const bsdcat = b.addModule("bsdcat", .{
-            .target = target,
-            .optimize = optimize,
-        });
-        bsdcat.addConfigHeader(config_h);
-        bsdcat.addCSourceFiles(.{
-            .root = upstream.path("cat"),
-            .files = bsdcat_src_files,
-        });
-        bsdcat.addIncludePath(upstream.path("libarchive"));
-        bsdcat.linkLibrary(libarchive_static);
-        bsdcat.addIncludePath(upstream.path("libarchive_fe"));
-        bsdcat.linkLibrary(libarchive_fe_static);
-
-        const bsdcat_exe = b.addExecutable(.{
-            .name = "bsdcat",
-            .root_module = bsdcat,
-        });
-        b.installArtifact(bsdcat_exe);
     }
 }
 
@@ -616,6 +638,12 @@ const bsdtar_src_files = &.{
 const bsdcat_src_files = &.{
     "bsdcat.c",
     "cmdline.c",
+};
+
+const bsdcpio_src_files = &.{
+    "cmdline.c",
+    "cpio.c",
+    "cpio_windows.c",
 };
 
 const libarchive_fe_src_files = &.{
