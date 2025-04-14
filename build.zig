@@ -16,7 +16,9 @@ pub fn build(b: *std.Build) void {
 
     const config_h = getConfigHeader(b, upstream, target);
 
-    const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar") orelse true;
+    const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
+    const enable_bsdcat = b.option(bool, "enable-bsdcat", "enable build of bsdcat (default: true)") orelse true;
+    const enable_bsdcpio = b.option(bool, "enable-bsdcpio", "enable build of bsdcpio (default: true)") orelse true;
 
     const package_name = package["lib".len..];
     const defs = &.{"-DHAVE_CONFIG_H=1"};
@@ -71,8 +73,8 @@ pub fn build(b: *std.Build) void {
             .flags = defs,
         });
         bsdtar.addIncludePath(upstream.path("libarchive"));
-        bsdtar.addIncludePath(upstream.path("libarchive_fe"));
         bsdtar.linkLibrary(libarchive_static);
+        bsdtar.addIncludePath(upstream.path("libarchive_fe"));
         bsdtar.linkLibrary(libarchive_fe_static);
 
         const bsdtar_exe = b.addExecutable(.{
@@ -81,9 +83,31 @@ pub fn build(b: *std.Build) void {
         });
         b.installArtifact(bsdtar_exe);
     }
+
+    if (enable_bsdcat) {
+        const bsdcat = b.addModule("bsdcat", .{
+            .target = target,
+            .optimize = optimize,
+        });
+        bsdcat.addConfigHeader(config_h);
+        bsdcat.addCSourceFiles(.{
+            .root = upstream.path("cat"),
+            .files = bsdcat_src_files,
+        });
+        bsdcat.addIncludePath(upstream.path("libarchive"));
+        bsdcat.linkLibrary(libarchive_static);
+        bsdcat.addIncludePath(upstream.path("libarchive_fe"));
+        bsdcat.linkLibrary(libarchive_fe_static);
+
+        const bsdcat_exe = b.addExecutable(.{
+            .name = "bsdcat",
+            .root_module = bsdcat,
+        });
+        b.installArtifact(bsdcat_exe);
+    }
 }
 
-inline fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.Build.ResolvedTarget) *std.Build.Step.ConfigHeader {
+fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.Build.ResolvedTarget) *std.Build.Step.ConfigHeader {
     const config_options = .{
         .ARCHIVE_ACL_DARWIN = null,
         .ARCHIVE_ACL_FREEBSD = null,
@@ -587,6 +611,11 @@ const bsdtar_src_files = &.{
     "subst.c",
     "util.c",
     "write.c",
+};
+
+const bsdcat_src_files = &.{
+    "bsdcat.c",
+    "cmdline.c",
 };
 
 const libarchive_fe_src_files = &.{
