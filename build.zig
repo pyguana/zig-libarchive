@@ -9,10 +9,12 @@ const version: std.SemanticVersion = .{
 const version_string = std.fmt.comptimePrint("{}", .{version});
 
 pub fn build(b: *std.Build) void {
-    const upstream = b.dependency(package, .{});
-    const zlib = b.dependency("zlib", .{});
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+
+    const upstream = b.dependency(package, .{});
+    const zlib = b.dependency("zlib", .{});
+    const lz4 = b.dependency("lz4", .{});
 
     const config_h = getConfigHeader(b, upstream, target);
 
@@ -36,6 +38,7 @@ pub fn build(b: *std.Build) void {
         .flags = defs,
     });
     libarchive.linkLibrary(zlib.artifact("z"));
+    libarchive.linkLibrary(lz4.artifact("lz4"));
 
     const libarchive_static = b.addLibrary(.{
         .name = package_name,
