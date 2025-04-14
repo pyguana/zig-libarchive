@@ -14,16 +14,139 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addStaticLibrary(.{
-        .name = package["lib".len..],
+    const config_h = getConfigHeader(b, upstream, target);
+
+    const enable_bsdcat = b.option(bool, "enable-bsdcat", "enable build of bsdcat (default: true)") orelse true;
+    const enable_bsdcpio = b.option(bool, "enable-bsdcpio", "enable build of bsdcpio (default: true)") orelse true;
+    const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
+    const enable_bsdunzip = b.option(bool, "enable-bsdunzip", "enable build of bsdunzip (default: true)") orelse true;
+
+    const package_name = package["lib".len..];
+    const defs = &.{"-DHAVE_CONFIG_H=1"};
+
+    const libarchive = b.addModule(package_name, .{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    libarchive.addConfigHeader(config_h);
+    libarchive.addCSourceFiles(.{
+        .root = upstream.path("libarchive"),
+        .files = libarchive_src_files,
+        .flags = defs,
+    });
+    libarchive.linkLibrary(zlib.artifact("z"));
+
+    const libarchive_static = b.addLibrary(.{
+        .name = package_name,
+        .root_module = libarchive,
+        .linkage = .static,
+    });
+    b.installArtifact(libarchive_static);
+
+    const libarchive_fe = b.addModule("libarchive_fe", .{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    libarchive_fe.addCSourceFiles(.{
+        .root = upstream.path("libarchive_fe"),
+        .files = libarchive_fe_src_files,
+        .flags = defs,
+    });
+    libarchive_fe.addConfigHeader(config_h);
+
+    const libarchive_fe_static = b.addLibrary(.{
+        .name = "libarchive_fe",
+        .root_module = libarchive_fe,
+        .linkage = .static,
+    });
+
+    const bsdcat = b.addModule("bsdcat", .{
         .target = target,
         .optimize = optimize,
     });
-    lib.root_module.linkLibrary(zlib.artifact("z"));
-    lib.root_module.addCMacro("HAVE_CONFIG_H", "1");
-    lib.root_module.addConfigHeader(b.addConfigHeader(.{
-        .style = .{ .autoconf = upstream.path("config.h.in") },
-    }, .{
+    bsdcat.addConfigHeader(config_h);
+    bsdcat.addCSourceFiles(.{
+        .root = upstream.path("cat"),
+        .files = bsdcat_src_files,
+    });
+    bsdcat.addIncludePath(upstream.path("libarchive"));
+    bsdcat.linkLibrary(libarchive_static);
+    bsdcat.addIncludePath(upstream.path("libarchive_fe"));
+    bsdcat.linkLibrary(libarchive_fe_static);
+
+    const bsdcat_exe = b.addExecutable(.{
+        .name = "bsdcat",
+        .root_module = bsdcat,
+    });
+    if (enable_bsdcat) b.installArtifact(bsdcat_exe);
+
+    const bsdcpio = b.addModule("bsdcpio", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    bsdcpio.addConfigHeader(config_h);
+    bsdcpio.addCSourceFiles(.{
+        .root = upstream.path("cpio"),
+        .files = bsdcpio_src_files,
+    });
+    bsdcpio.addIncludePath(upstream.path("libarchive"));
+    bsdcpio.linkLibrary(libarchive_static);
+    bsdcpio.addIncludePath(upstream.path("libarchive_fe"));
+    bsdcpio.linkLibrary(libarchive_fe_static);
+
+    const bsdcpio_exe = b.addExecutable(.{
+        .name = "bsdcpio",
+        .root_module = bsdcpio,
+    });
+    if (enable_bsdcpio) b.installArtifact(bsdcpio_exe);
+
+    const bsdtar = b.addModule("bsdtar", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    bsdtar.addConfigHeader(config_h);
+    bsdtar.addCSourceFiles(.{
+        .root = upstream.path("tar"),
+        .files = bsdtar_src_files,
+        .flags = defs,
+    });
+    bsdtar.addIncludePath(upstream.path("libarchive"));
+    bsdtar.linkLibrary(libarchive_static);
+    bsdtar.addIncludePath(upstream.path("libarchive_fe"));
+    bsdtar.linkLibrary(libarchive_fe_static);
+
+    const bsdtar_exe = b.addExecutable(.{
+        .name = "bsdtar",
+        .root_module = bsdtar,
+    });
+    if (enable_bsdtar) b.installArtifact(bsdtar_exe);
+
+    const bsdunzip = b.addModule("bsdunzip", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    bsdunzip.addConfigHeader(config_h);
+    bsdunzip.addCSourceFiles(.{
+        .root = upstream.path("unzip"),
+        .files = bsdunzip_src_files,
+        .flags = defs,
+    });
+    bsdunzip.addIncludePath(upstream.path("libarchive"));
+    bsdunzip.linkLibrary(libarchive_static);
+    bsdunzip.addIncludePath(upstream.path("libarchive_fe"));
+    bsdunzip.linkLibrary(libarchive_fe_static);
+
+    const bsdunzip_exe = b.addExecutable(.{
+        .name = "bsdunzip",
+        .root_module = bsdunzip,
+    });
+    if (enable_bsdunzip) b.installArtifact(bsdunzip_exe);
+}
+
+fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.Build.ResolvedTarget) *std.Build.Step.ConfigHeader {
+    const config_options = .{
         .ARCHIVE_ACL_DARWIN = null,
         .ARCHIVE_ACL_FREEBSD = null,
         .ARCHIVE_ACL_FREEBSD_NFS4 = null,
@@ -123,7 +246,7 @@ pub fn build(b: *std.Build) void {
         .HAVE_ACL_T = true,
         .HAVE_ACL_TAG_T = true,
         .HAVE_ARC4RANDOM_BUF = null,
-        .HAVE_ATTR_XATTR_H = true,
+        .HAVE_ATTR_XATTR_H = null,
         .HAVE_BCRYPT_H = null,
         .HAVE_BLAKE2_H = null,
         .HAVE_BZLIB_H = null,
@@ -227,7 +350,7 @@ pub fn build(b: *std.Build) void {
         .HAVE_LCHOWN = true,
         .HAVE_LGETEA = null,
         .HAVE_LGETXATTR = true,
-        .HAVE_LIBACL = true,
+        .HAVE_LIBACL = null,
         .HAVE_LIBB2 = true,
         .HAVE_LIBBZ2 = null,
         .HAVE_LIBCHARSET = null,
@@ -512,142 +635,175 @@ pub fn build(b: *std.Build) void {
         .uint8_t = null,
         .uintmax_t = null,
         .uintptr_t = null,
-    }));
-    lib.root_module.addCSourceFiles(.{
-        .root = upstream.path("libarchive"),
-        .files = &.{
-            "archive_acl.c",
-            "archive_blake2s_ref.c",
-            "archive_blake2sp_ref.c",
-            "archive_check_magic.c",
-            "archive_cmdline.c",
-            "archive_cryptor.c",
-            "archive_digest.c",
-            "archive_disk_acl_darwin.c",
-            "archive_disk_acl_freebsd.c",
-            "archive_disk_acl_linux.c",
-            "archive_disk_acl_sunos.c",
-            "archive_entry.c",
-            "archive_entry_copy_bhfi.c",
-            "archive_entry_copy_stat.c",
-            "archive_entry_link_resolver.c",
-            "archive_entry_sparse.c",
-            "archive_entry_stat.c",
-            "archive_entry_strmode.c",
-            "archive_entry_xattr.c",
-            "archive_getdate.c",
-            "archive_hmac.c",
-            "archive_match.c",
-            "archive_options.c",
-            "archive_pack_dev.c",
-            "archive_pathmatch.c",
-            "archive_ppmd7.c",
-            "archive_ppmd8.c",
-            "archive_random.c",
-            "archive_rb.c",
-            "archive_read.c",
-            "archive_read_add_passphrase.c",
-            "archive_read_append_filter.c",
-            "archive_read_data_into_fd.c",
-            "archive_read_disk_entry_from_file.c",
-            "archive_read_disk_posix.c",
-            "archive_read_disk_set_standard_lookup.c",
-            "archive_read_disk_windows.c",
-            "archive_read_extract.c",
-            "archive_read_extract2.c",
-            "archive_read_open_fd.c",
-            "archive_read_open_file.c",
-            "archive_read_open_filename.c",
-            "archive_read_open_memory.c",
-            "archive_read_set_format.c",
-            "archive_read_set_options.c",
-            "archive_read_support_filter_all.c",
-            "archive_read_support_filter_by_code.c",
-            "archive_read_support_filter_bzip2.c",
-            "archive_read_support_filter_compress.c",
-            "archive_read_support_filter_gzip.c",
-            "archive_read_support_filter_grzip.c",
-            "archive_read_support_filter_lrzip.c",
-            "archive_read_support_filter_lz4.c",
-            "archive_read_support_filter_lzop.c",
-            "archive_read_support_filter_none.c",
-            "archive_read_support_filter_program.c",
-            "archive_read_support_filter_rpm.c",
-            "archive_read_support_filter_uu.c",
-            "archive_read_support_filter_xz.c",
-            "archive_read_support_filter_zstd.c",
-            "archive_read_support_format_7zip.c",
-            "archive_read_support_format_all.c",
-            "archive_read_support_format_ar.c",
-            "archive_read_support_format_by_code.c",
-            "archive_read_support_format_cab.c",
-            "archive_read_support_format_cpio.c",
-            "archive_read_support_format_empty.c",
-            "archive_read_support_format_iso9660.c",
-            "archive_read_support_format_lha.c",
-            "archive_read_support_format_mtree.c",
-            "archive_read_support_format_rar.c",
-            "archive_read_support_format_rar5.c",
-            "archive_read_support_format_raw.c",
-            "archive_read_support_format_tar.c",
-            "archive_read_support_format_warc.c",
-            "archive_read_support_format_xar.c",
-            "archive_read_support_format_zip.c",
-            "archive_string.c",
-            "archive_string_sprintf.c",
-            "archive_util.c",
-            "archive_version_details.c",
-            "archive_virtual.c",
-            "archive_windows.c",
-            "archive_write.c",
-            "archive_write_add_filter.c",
-            "archive_write_add_filter_b64encode.c",
-            "archive_write_add_filter_by_name.c",
-            "archive_write_add_filter_bzip2.c",
-            "archive_write_add_filter_compress.c",
-            "archive_write_add_filter_grzip.c",
-            "archive_write_add_filter_gzip.c",
-            "archive_write_add_filter_lrzip.c",
-            "archive_write_add_filter_lz4.c",
-            "archive_write_add_filter_lzop.c",
-            "archive_write_add_filter_none.c",
-            "archive_write_add_filter_program.c",
-            "archive_write_add_filter_uuencode.c",
-            "archive_write_add_filter_xz.c",
-            "archive_write_add_filter_zstd.c",
-            "archive_write_disk_posix.c",
-            "archive_write_disk_set_standard_lookup.c",
-            "archive_write_disk_windows.c",
-            "archive_write_open_fd.c",
-            "archive_write_open_file.c",
-            "archive_write_open_filename.c",
-            "archive_write_open_memory.c",
-            "archive_write_set_format.c",
-            "archive_write_set_format_7zip.c",
-            "archive_write_set_format_ar.c",
-            "archive_write_set_format_by_name.c",
-            "archive_write_set_format_cpio.c",
-            "archive_write_set_format_cpio_binary.c",
-            "archive_write_set_format_cpio_newc.c",
-            "archive_write_set_format_cpio_odc.c",
-            "archive_write_set_format_filter_by_ext.c",
-            "archive_write_set_format_gnutar.c",
-            "archive_write_set_format_iso9660.c",
-            "archive_write_set_format_mtree.c",
-            "archive_write_set_format_pax.c",
-            "archive_write_set_format_raw.c",
-            "archive_write_set_format_shar.c",
-            "archive_write_set_format_ustar.c",
-            "archive_write_set_format_v7tar.c",
-            "archive_write_set_format_warc.c",
-            "archive_write_set_format_xar.c",
-            "archive_write_set_format_zip.c",
-            "archive_write_set_options.c",
-            "archive_write_set_passphrase.c",
-            "filter_fork_posix.c",
-            "filter_fork_windows.c",
-            "xxhash.c",
-        },
-    });
-    b.installArtifact(lib);
+    };
+
+    return b.addConfigHeader(.{ .style = .{ .autoconf = upstream.path("config.h.in") } }, config_options);
 }
+
+const bsdcat_src_files = &.{
+    "bsdcat.c",
+    "cmdline.c",
+};
+
+const bsdcpio_src_files = &.{
+    "cmdline.c",
+    "cpio.c",
+    "cpio_windows.c",
+};
+
+const libarchive_fe_src_files = &.{
+    "err.c",
+    "line_reader.c",
+    "passphrase.c",
+};
+
+const bsdtar_src_files = &.{
+    "bsdtar.c",
+    "bsdtar_windows.c",
+    "cmdline.c",
+    "creation_set.c",
+    "read.c",
+    "subst.c",
+    "util.c",
+    "write.c",
+};
+
+const bsdunzip_src_files = &.{
+    "bsdunzip.c",
+    "cmdline.c",
+    "la_getline.c",
+};
+
+const libarchive_src_files = &.{
+    "archive_acl.c",
+    "archive_blake2s_ref.c",
+    "archive_blake2sp_ref.c",
+    "archive_check_magic.c",
+    "archive_cmdline.c",
+    "archive_cryptor.c",
+    "archive_digest.c",
+    "archive_disk_acl_darwin.c",
+    "archive_disk_acl_freebsd.c",
+    "archive_disk_acl_linux.c",
+    "archive_disk_acl_sunos.c",
+    "archive_entry.c",
+    "archive_entry_copy_bhfi.c",
+    "archive_entry_copy_stat.c",
+    "archive_entry_link_resolver.c",
+    "archive_entry_sparse.c",
+    "archive_entry_stat.c",
+    "archive_entry_strmode.c",
+    "archive_entry_xattr.c",
+    "archive_getdate.c",
+    "archive_hmac.c",
+    "archive_match.c",
+    "archive_options.c",
+    "archive_pack_dev.c",
+    "archive_pathmatch.c",
+    "archive_ppmd7.c",
+    "archive_ppmd8.c",
+    "archive_random.c",
+    "archive_rb.c",
+    "archive_read.c",
+    "archive_read_add_passphrase.c",
+    "archive_read_append_filter.c",
+    "archive_read_data_into_fd.c",
+    "archive_read_disk_entry_from_file.c",
+    "archive_read_disk_posix.c",
+    "archive_read_disk_set_standard_lookup.c",
+    "archive_read_disk_windows.c",
+    "archive_read_extract.c",
+    "archive_read_extract2.c",
+    "archive_read_open_fd.c",
+    "archive_read_open_file.c",
+    "archive_read_open_filename.c",
+    "archive_read_open_memory.c",
+    "archive_read_set_format.c",
+    "archive_read_set_options.c",
+    "archive_read_support_filter_all.c",
+    "archive_read_support_filter_by_code.c",
+    "archive_read_support_filter_bzip2.c",
+    "archive_read_support_filter_compress.c",
+    "archive_read_support_filter_gzip.c",
+    "archive_read_support_filter_grzip.c",
+    "archive_read_support_filter_lrzip.c",
+    "archive_read_support_filter_lz4.c",
+    "archive_read_support_filter_lzop.c",
+    "archive_read_support_filter_none.c",
+    "archive_read_support_filter_program.c",
+    "archive_read_support_filter_rpm.c",
+    "archive_read_support_filter_uu.c",
+    "archive_read_support_filter_xz.c",
+    "archive_read_support_filter_zstd.c",
+    "archive_read_support_format_7zip.c",
+    "archive_read_support_format_all.c",
+    "archive_read_support_format_ar.c",
+    "archive_read_support_format_by_code.c",
+    "archive_read_support_format_cab.c",
+    "archive_read_support_format_cpio.c",
+    "archive_read_support_format_empty.c",
+    "archive_read_support_format_iso9660.c",
+    "archive_read_support_format_lha.c",
+    "archive_read_support_format_mtree.c",
+    "archive_read_support_format_rar.c",
+    "archive_read_support_format_rar5.c",
+    "archive_read_support_format_raw.c",
+    "archive_read_support_format_tar.c",
+    "archive_read_support_format_warc.c",
+    "archive_read_support_format_xar.c",
+    "archive_read_support_format_zip.c",
+    "archive_string.c",
+    "archive_string_sprintf.c",
+    "archive_util.c",
+    "archive_version_details.c",
+    "archive_virtual.c",
+    "archive_windows.c",
+    "archive_write.c",
+    "archive_write_add_filter.c",
+    "archive_write_add_filter_b64encode.c",
+    "archive_write_add_filter_by_name.c",
+    "archive_write_add_filter_bzip2.c",
+    "archive_write_add_filter_compress.c",
+    "archive_write_add_filter_grzip.c",
+    "archive_write_add_filter_gzip.c",
+    "archive_write_add_filter_lrzip.c",
+    "archive_write_add_filter_lz4.c",
+    "archive_write_add_filter_lzop.c",
+    "archive_write_add_filter_none.c",
+    "archive_write_add_filter_program.c",
+    "archive_write_add_filter_uuencode.c",
+    "archive_write_add_filter_xz.c",
+    "archive_write_add_filter_zstd.c",
+    "archive_write_disk_posix.c",
+    "archive_write_disk_set_standard_lookup.c",
+    "archive_write_disk_windows.c",
+    "archive_write_open_fd.c",
+    "archive_write_open_file.c",
+    "archive_write_open_filename.c",
+    "archive_write_open_memory.c",
+    "archive_write_set_format.c",
+    "archive_write_set_format_7zip.c",
+    "archive_write_set_format_ar.c",
+    "archive_write_set_format_by_name.c",
+    "archive_write_set_format_cpio.c",
+    "archive_write_set_format_cpio_binary.c",
+    "archive_write_set_format_cpio_newc.c",
+    "archive_write_set_format_cpio_odc.c",
+    "archive_write_set_format_filter_by_ext.c",
+    "archive_write_set_format_gnutar.c",
+    "archive_write_set_format_iso9660.c",
+    "archive_write_set_format_mtree.c",
+    "archive_write_set_format_pax.c",
+    "archive_write_set_format_raw.c",
+    "archive_write_set_format_shar.c",
+    "archive_write_set_format_ustar.c",
+    "archive_write_set_format_v7tar.c",
+    "archive_write_set_format_warc.c",
+    "archive_write_set_format_xar.c",
+    "archive_write_set_format_zip.c",
+    "archive_write_set_options.c",
+    "archive_write_set_passphrase.c",
+    "filter_fork_posix.c",
+    "filter_fork_windows.c",
+    "xxhash.c",
+};
