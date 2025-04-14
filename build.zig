@@ -19,6 +19,7 @@ pub fn build(b: *std.Build) void {
     const enable_bsdcat = b.option(bool, "enable-bsdcat", "enable build of bsdcat (default: true)") orelse true;
     const enable_bsdcpio = b.option(bool, "enable-bsdcpio", "enable build of bsdcpio (default: true)") orelse true;
     const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
+    const enable_bsdunzip = b.option(bool, "enable-bsdunzip", "enable build of bsdunzip (default: true)") orelse true;
 
     const package_name = package["lib".len..];
     const defs = &.{"-DHAVE_CONFIG_H=1"};
@@ -126,6 +127,29 @@ pub fn build(b: *std.Build) void {
             .root_module = bsdtar,
         });
         b.installArtifact(bsdtar_exe);
+    }
+
+    if (enable_bsdunzip) {
+        const bsdunzip = b.addModule("bsdunzip", .{
+            .target = target,
+            .optimize = optimize,
+        });
+        bsdunzip.addConfigHeader(config_h);
+        bsdunzip.addCSourceFiles(.{
+            .root = upstream.path("unzip"),
+            .files = bsdunzip_src_files,
+            .flags = defs,
+        });
+        bsdunzip.addIncludePath(upstream.path("libarchive"));
+        bsdunzip.linkLibrary(libarchive_static);
+        bsdunzip.addIncludePath(upstream.path("libarchive_fe"));
+        bsdunzip.linkLibrary(libarchive_fe_static);
+
+        const bsdunzip_exe = b.addExecutable(.{
+            .name = "bsdunzip",
+            .root_module = bsdunzip,
+        });
+        b.installArtifact(bsdunzip_exe);
     }
 }
 
@@ -624,17 +648,6 @@ fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.B
     return b.addConfigHeader(.{ .style = .{ .autoconf = upstream.path("config.h.in") } }, config_options);
 }
 
-const bsdtar_src_files = &.{
-    "bsdtar.c",
-    "bsdtar_windows.c",
-    "cmdline.c",
-    "creation_set.c",
-    "read.c",
-    "subst.c",
-    "util.c",
-    "write.c",
-};
-
 const bsdcat_src_files = &.{
     "bsdcat.c",
     "cmdline.c",
@@ -650,6 +663,23 @@ const libarchive_fe_src_files = &.{
     "err.c",
     "line_reader.c",
     "passphrase.c",
+};
+
+const bsdtar_src_files = &.{
+    "bsdtar.c",
+    "bsdtar_windows.c",
+    "cmdline.c",
+    "creation_set.c",
+    "read.c",
+    "subst.c",
+    "util.c",
+    "write.c",
+};
+
+const bsdunzip_src_files = &.{
+    "bsdunzip.c",
+    "cmdline.c",
+    "la_getline.c",
 };
 
 const libarchive_src_files = &.{
