@@ -13,8 +13,9 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const upstream = b.dependency(package, .{});
-    const zlib = b.dependency("zlib", .{});
-    const lz4 = b.dependency("lz4", .{});
+    const lz4 = b.dependency("lz4", .{ .target = target, .optimize = optimize });
+    const zlib = b.dependency("zlib", .{ .target = target, .optimize = optimize });
+    const zstd = b.dependency("zstd", .{ .target = target, .optimize = optimize });
 
     const config_h = getConfigHeader(b, upstream, target);
 
@@ -37,8 +38,9 @@ pub fn build(b: *std.Build) void {
         .files = libarchive_src_files,
         .flags = defs,
     });
-    libarchive.linkLibrary(zlib.artifact("z"));
     libarchive.linkLibrary(lz4.artifact("lz4"));
+    libarchive.linkLibrary(zlib.artifact("z"));
+    libarchive.linkLibrary(zstd.artifact("zstd"));
 
     const libarchive_static = b.addLibrary(.{
         .name = package_name,
