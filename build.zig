@@ -16,9 +16,11 @@ pub fn build(b: *std.Build) void {
 
     const config_h = getConfigHeader(b, upstream, target);
 
-    const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar") orelse false;
+    const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar") orelse true;
 
     const package_name = package["lib".len..];
+    const defs = &.{"-DHAVE_CONFIG_H=1"};
+
     const libarchive = b.addModule(package_name, .{
         .target = target,
         .optimize = optimize,
@@ -28,7 +30,7 @@ pub fn build(b: *std.Build) void {
     libarchive.addCSourceFiles(.{
         .root = upstream.path("libarchive"),
         .files = libarchive_src_files,
-        .flags = &.{"-DHAVE_CONFIG_H=1"},
+        .flags = defs,
     });
     libarchive.linkLibrary(zlib.artifact("z"));
 
@@ -39,6 +41,24 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(libarchive_static);
 
+    const libarchive_fe = b.addModule("libarchive_fe", .{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    libarchive_fe.addCSourceFiles(.{
+        .root = upstream.path("libarchive_fe"),
+        .files = libarchive_fe_src_files,
+        .flags = defs,
+    });
+    libarchive_fe.addConfigHeader(config_h);
+
+    const libarchive_fe_static = b.addLibrary(.{
+        .name = "libarchive_fe",
+        .root_module = libarchive_fe,
+        .linkage = .static,
+    });
+
     if (enable_bsdtar) {
         const bsdtar = b.addModule("bsdtar", .{
             .target = target,
@@ -47,20 +67,13 @@ pub fn build(b: *std.Build) void {
         bsdtar.addConfigHeader(config_h);
         bsdtar.addCSourceFiles(.{
             .root = upstream.path("tar"),
-            .files = &.{
-                "bsdtar.c",
-                "bsdtar_windows.c",
-                "cmdline.c",
-                "creation_set.c",
-                "read.c",
-                "subst.c",
-                "util.c",
-                "write.c",
-            },
-            .flags = &.{"-DHAVE_CONFIG_H=1"},
+            .files = bsdtar_src_files,
+            .flags = defs,
         });
         bsdtar.addIncludePath(upstream.path("libarchive"));
+        bsdtar.addIncludePath(upstream.path("libarchive_fe"));
         bsdtar.linkLibrary(libarchive_static);
+        bsdtar.linkLibrary(libarchive_fe_static);
 
         const bsdtar_exe = b.addExecutable(.{
             .name = "bsdtar",
@@ -564,6 +577,23 @@ inline fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target
 
     return b.addConfigHeader(.{ .style = .{ .autoconf = upstream.path("config.h.in") } }, config_options);
 }
+
+const bsdtar_src_files = &.{
+    "bsdtar.c",
+    "bsdtar_windows.c",
+    "cmdline.c",
+    "creation_set.c",
+    "read.c",
+    "subst.c",
+    "util.c",
+    "write.c",
+};
+
+const libarchive_fe_src_files = &.{
+    "err.c",
+    "line_reader.c",
+    "passphrase.c",
+};
 
 const libarchive_src_files = &.{
     "archive_acl.c",
