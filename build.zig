@@ -246,7 +246,7 @@ fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.B
         .HAVE_ACL_T = true,
         .HAVE_ACL_TAG_T = true,
         .HAVE_ARC4RANDOM_BUF = null,
-        .HAVE_ATTR_XATTR_H = true,
+        .HAVE_ATTR_XATTR_H = null,
         .HAVE_BCRYPT_H = null,
         .HAVE_BLAKE2_H = null,
         .HAVE_BZLIB_H = null,
