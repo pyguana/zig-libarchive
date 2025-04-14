@@ -350,7 +350,7 @@ fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.B
         .HAVE_LCHOWN = true,
         .HAVE_LGETEA = null,
         .HAVE_LGETXATTR = true,
-        .HAVE_LIBACL = true,
+        .HAVE_LIBACL = null,
         .HAVE_LIBB2 = true,
         .HAVE_LIBBZ2 = null,
         .HAVE_LIBCHARSET = null,
