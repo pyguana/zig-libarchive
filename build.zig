@@ -146,24 +146,6 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run all of the tests.");
 
-    //const test_utils = b.addModule("test_utils", .{
-    //    .target = target,
-    //    .optimize = optimize,
-    //    .link_libc = true,
-    //});
-    //test_utils.addConfigHeader(config_h);
-    //test_utils.addCSourceFiles(.{
-    //    .root = upstream.path("test_utils"),
-    //    .files = test_utils_src_files,
-    //    .flags = defs,
-    //});
-    //
-    //const test_utils_static = b.addLibrary(.{
-    //    .name = "test_utils",
-    //    .root_module = test_utils,
-    //    .linkage = .static,
-    //});
-
     const libarchive_test = b.addModule("libarchive_test", .{
         .target = target,
         .optimize = optimize,
@@ -189,6 +171,7 @@ pub fn build(b: *std.Build) void {
         .root_module = libarchive_test,
     });
     const libarchive_test_run = b.addRunArtifact(libarchive_test_exe);
+    libarchive_test_run.setCwd(upstream.path(""));
     test_step.dependOn(&libarchive_test_run.step);
 }
 
