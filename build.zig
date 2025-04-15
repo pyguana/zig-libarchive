@@ -20,6 +20,7 @@ pub fn build(b: *std.Build) void {
     const enable_bsdcpio = b.option(bool, "enable-bsdcpio", "enable build of bsdcpio (default: true)") orelse true;
     const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
     const enable_bsdunzip = b.option(bool, "enable-bsdunzip", "enable build of bsdunzip (default: true)") orelse true;
+    const enable_zlib = b.option(bool, "enable-zlib", "enable fetch and link of zlib (default:false)") orelse false;
 
     const package_name = package["lib".len..];
     const defs = &.{"-DHAVE_CONFIG_H=1"};
@@ -28,6 +29,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
+        .sanitize_c = false,
     });
     libarchive.addConfigHeader(config_h);
     libarchive.addCSourceFiles(.{
@@ -35,7 +37,7 @@ pub fn build(b: *std.Build) void {
         .files = libarchive_src_files,
         .flags = defs,
     });
-    libarchive.linkLibrary(zlib.artifact("z"));
+    if (enable_zlib) libarchive.linkLibrary(zlib.artifact("z"));
 
     const libarchive_static = b.addLibrary(.{
         .name = package_name,
@@ -48,6 +50,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
+        .sanitize_c = false,
     });
     libarchive_fe.addCSourceFiles(.{
         .root = upstream.path("libarchive_fe"),
@@ -65,6 +68,8 @@ pub fn build(b: *std.Build) void {
     const bsdcat = b.addModule("bsdcat", .{
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
+        .sanitize_c = false,
     });
     bsdcat.addConfigHeader(config_h);
     bsdcat.addCSourceFiles(.{
@@ -85,6 +90,8 @@ pub fn build(b: *std.Build) void {
     const bsdcpio = b.addModule("bsdcpio", .{
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
+        .sanitize_c = false,
     });
     bsdcpio.addConfigHeader(config_h);
     bsdcpio.addCSourceFiles(.{
@@ -105,6 +112,8 @@ pub fn build(b: *std.Build) void {
     const bsdtar = b.addModule("bsdtar", .{
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
+        .sanitize_c = false,
     });
     bsdtar.addConfigHeader(config_h);
     bsdtar.addCSourceFiles(.{
@@ -126,6 +135,8 @@ pub fn build(b: *std.Build) void {
     const bsdunzip = b.addModule("bsdunzip", .{
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
+        .sanitize_c = false,
     });
     bsdunzip.addConfigHeader(config_h);
     bsdunzip.addCSourceFiles(.{
@@ -149,6 +160,8 @@ pub fn build(b: *std.Build) void {
     const libarchive_test = b.addModule("libarchive_test", .{
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
+        .sanitize_c = false,
     });
     libarchive_test.addCSourceFiles(.{
         .root = upstream.path("libarchive/test"),
@@ -243,40 +256,40 @@ fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.B
         .HAVE_ACL = null,
         .HAVE_ACLENT_T = null,
         .HAVE_ACL_ADD_FLAG_NP = null,
-        .HAVE_ACL_ADD_PERM = true,
+        .HAVE_ACL_ADD_PERM = null,
         .HAVE_ACL_CLEAR_FLAGS_NP = null,
-        .HAVE_ACL_CLEAR_PERMS = true,
-        .HAVE_ACL_CREATE_ENTRY = true,
-        .HAVE_ACL_DELETE_DEF_FILE = true,
-        .HAVE_ACL_ENTRY_T = true,
-        .HAVE_ACL_FREE = true,
+        .HAVE_ACL_CLEAR_PERMS = null,
+        .HAVE_ACL_CREATE_ENTRY = null,
+        .HAVE_ACL_DELETE_DEF_FILE = null,
+        .HAVE_ACL_ENTRY_T = null,
+        .HAVE_ACL_FREE = null,
         .HAVE_ACL_GET_BRAND_NP = null,
-        .HAVE_ACL_GET_ENTRY = true,
+        .HAVE_ACL_GET_ENTRY = null,
         .HAVE_ACL_GET_ENTRY_TYPE_NP = null,
-        .HAVE_ACL_GET_FD = true,
+        .HAVE_ACL_GET_FD = null,
         .HAVE_ACL_GET_FD_NP = null,
-        .HAVE_ACL_GET_FILE = true,
+        .HAVE_ACL_GET_FILE = null,
         .HAVE_ACL_GET_FLAGSET_NP = null,
         .HAVE_ACL_GET_FLAG_NP = null,
         .HAVE_ACL_GET_LINK_NP = null,
-        .HAVE_ACL_GET_PERM = true,
-        .HAVE_ACL_GET_PERMSET = true,
+        .HAVE_ACL_GET_PERM = null,
+        .HAVE_ACL_GET_PERMSET = null,
         .HAVE_ACL_GET_PERM_NP = null,
-        .HAVE_ACL_GET_QUALIFIER = true,
-        .HAVE_ACL_GET_TAG_TYPE = true,
-        .HAVE_ACL_INIT = true,
+        .HAVE_ACL_GET_QUALIFIER = null,
+        .HAVE_ACL_GET_TAG_TYPE = null,
+        .HAVE_ACL_INIT = null,
         .HAVE_ACL_IS_TRIVIAL_NP = null,
-        .HAVE_ACL_LIBACL_H = true,
-        .HAVE_ACL_PERMSET_T = true,
+        .HAVE_ACL_LIBACL_H = null,
+        .HAVE_ACL_PERMSET_T = null,
         .HAVE_ACL_SET_ENTRY_TYPE_NP = null,
-        .HAVE_ACL_SET_FD = true,
+        .HAVE_ACL_SET_FD = null,
         .HAVE_ACL_SET_FD_NP = null,
-        .HAVE_ACL_SET_FILE = true,
+        .HAVE_ACL_SET_FILE = null,
         .HAVE_ACL_SET_LINK_NP = null,
-        .HAVE_ACL_SET_QUALIFIER = true,
-        .HAVE_ACL_SET_TAG_TYPE = true,
-        .HAVE_ACL_T = true,
-        .HAVE_ACL_TAG_T = true,
+        .HAVE_ACL_SET_QUALIFIER = null,
+        .HAVE_ACL_SET_TAG_TYPE = null,
+        .HAVE_ACL_T = null,
+        .HAVE_ACL_TAG_T = null,
         .HAVE_ARC4RANDOM_BUF = null,
         .HAVE_ATTR_XATTR_H = null,
         .HAVE_BCRYPT_H = null,
@@ -383,7 +396,7 @@ fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.B
         .HAVE_LGETEA = null,
         .HAVE_LGETXATTR = true,
         .HAVE_LIBACL = null,
-        .HAVE_LIBB2 = true,
+        .HAVE_LIBB2 = null,
         .HAVE_LIBBZ2 = null,
         .HAVE_LIBCHARSET = null,
         .HAVE_LIBCRYPTO = null,
@@ -587,7 +600,7 @@ fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.B
         .HAVE_WMEMMOVE = true,
         .HAVE_WORKING_EXT2_IOC_GETFLAGS = true,
         .HAVE_WORKING_FS_IOC_GETFLAGS = true,
-        .HAVE_ZLIB_H = true,
+        .HAVE_ZLIB_H = null,
         .HAVE_ZSTD_H = null,
         .HAVE_ZSTD_compressStream = null,
         .HAVE__FSEEKI64 = null,
