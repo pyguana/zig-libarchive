@@ -24,6 +24,7 @@ pub fn build(b: *std.Build) void {
     const package_name = package["lib".len..];
     const defs = &.{"-DHAVE_CONFIG_H=1"};
 
+    // The core libarchive module. All other binaries depend on this.
     const libarchive = b.addModule(package_name, .{
         .target = target,
         .optimize = optimize,
@@ -44,6 +45,7 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(libarchive_static);
 
+    // Common frontend code used in all of the executables (bsdcat, bsdtar, etc.)
     const libarchive_fe = b.addModule("libarchive_fe", .{
         .target = target,
         .optimize = optimize,
@@ -410,7 +412,7 @@ fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.B
         .HAVE_LIBXML2 = null,
         .HAVE_LIBXML_XMLREADER_H = null,
         .HAVE_LIBXML_XMLWRITER_H = null,
-        .HAVE_LIBZ = null,
+        .HAVE_LIBZ = true,
         .HAVE_LIBZSTD = null,
         .HAVE_LIMITS_H = true,
         .HAVE_LINK = true,
