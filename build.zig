@@ -20,7 +20,6 @@ pub fn build(b: *std.Build) void {
     const enable_bsdcpio = b.option(bool, "enable-bsdcpio", "enable build of bsdcpio (default: true)") orelse true;
     const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
     const enable_bsdunzip = b.option(bool, "enable-bsdunzip", "enable build of bsdunzip (default: true)") orelse true;
-    const enable_zlib = b.option(bool, "enable-zlib", "enable fetch and link of zlib (default:false)") orelse false;
 
     const package_name = package["lib".len..];
     const defs = &.{"-DHAVE_CONFIG_H=1"};
@@ -29,7 +28,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
-        .sanitize_c = false,
     });
     libarchive.addConfigHeader(config_h);
     libarchive.addCSourceFiles(.{
@@ -37,7 +35,7 @@ pub fn build(b: *std.Build) void {
         .files = libarchive_src_files,
         .flags = defs,
     });
-    if (enable_zlib) libarchive.linkLibrary(zlib.artifact("z"));
+    libarchive.linkLibrary(zlib.artifact("z"));
 
     const libarchive_static = b.addLibrary(.{
         .name = package_name,
@@ -50,7 +48,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
-        .sanitize_c = false,
     });
     libarchive_fe.addCSourceFiles(.{
         .root = upstream.path("libarchive_fe"),
@@ -69,7 +66,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
-        .sanitize_c = false,
     });
     bsdcat.addConfigHeader(config_h);
     bsdcat.addCSourceFiles(.{
@@ -91,7 +87,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
-        .sanitize_c = false,
     });
     bsdcpio.addConfigHeader(config_h);
     bsdcpio.addCSourceFiles(.{
@@ -113,7 +108,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
-        .sanitize_c = false,
     });
     bsdtar.addConfigHeader(config_h);
     bsdtar.addCSourceFiles(.{
@@ -136,7 +130,6 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
-        .sanitize_c = false,
     });
     bsdunzip.addConfigHeader(config_h);
     bsdunzip.addCSourceFiles(.{
@@ -157,11 +150,12 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run all of the tests.");
 
+    const libarchive_test_step = b.step("libarchive-test", "Run the libarchive tests.");
+    test_step.dependOn(libarchive_test_step);
     const libarchive_test = b.addModule("libarchive_test", .{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
-        .sanitize_c = false,
     });
     libarchive_test.addCSourceFiles(.{
         .root = upstream.path("libarchive/test"),
@@ -185,7 +179,7 @@ pub fn build(b: *std.Build) void {
     });
     const libarchive_test_run = b.addRunArtifact(libarchive_test_exe);
     libarchive_test_run.setCwd(upstream.path(""));
-    test_step.dependOn(&libarchive_test_run.step);
+    libarchive_test_step.dependOn(&libarchive_test_run.step);
 }
 
 
