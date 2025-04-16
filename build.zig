@@ -52,6 +52,12 @@ pub fn build(b: *std.Build) void {
         .root_module = libarchive_module,
         .linkage = .static,
     });
+    libarchive.installHeadersDirectory(upstream.path("libarchive"), "", .{
+        .include_extensions = &.{
+            "archive.h",
+            "archive_entry.h",
+        },
+    });
     b.installArtifact(libarchive);
 
     // Common frontend code used in all of the executables (bsdcat, bsdtar, etc.)
