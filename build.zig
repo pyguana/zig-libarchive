@@ -188,7 +188,39 @@ pub fn build(b: *std.Build) void {
     libarchive_test_run.setCwd(upstream.path(""));
     libarchive_test_step.dependOn(&libarchive_test_run.step);
 
+    const bsdcat_test_step = b.step("bsdcat_test", "Run the bsdcat tests.");
+    test_step.dependOn(bsdcat_test_step);
+    const bsdcat_test_module = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    bsdcat_test_module.addCSourceFiles(.{
+        .root = upstream.path("cat/test"),
+        .files = bsdcat_test_src_files,
+        .flags = defs,
+    });
+    bsdcat_test_module.addCSourceFiles(.{
+        .root = upstream.path("test_utils"),
+        .files = test_utils_src_files,
+        .flags = defs,
+    });
+    bsdcat_test_module.addConfigHeader(config_h);
+    bsdcat_test_module.addIncludePath(upstream.path("test_utils"));
+    bsdcat_test_module.addIncludePath(upstream.path("libarchive"));
+    bsdcat_test_module.addIncludePath(upstream.path("cat"));
+    bsdcat_test_module.addIncludePath(upstream.path("cat/test"));
+    bsdcat_test_module.linkLibrary(libarchive);
 
+    const bsdcat_test = b.addExecutable(.{
+        .name = "bsdcat_test",
+        .root_module = bsdcat_test_module,
+    });
+    const bsdcat_test_run = b.addRunArtifact(bsdcat_test);
+    bsdcat_test_run.setCwd(upstream.path(""));
+    bsdcat_test_run.addArg("-p");
+    bsdcat_test_run.addArtifactArg(bsdcat);
+    bsdcat_test_step.dependOn(&bsdcat_test_run.step);
 }
 
 fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.Build.ResolvedTarget) *std.Build.Step.ConfigHeader {
@@ -1160,4 +1192,25 @@ const libarchive_test_src_files = &.{
 const libarchive_disabled_test_src = &.{
     "test_sparse_basic.c",
     "test_write_format_zip_large.c",
+};
+
+const bsdcat_test_src_files = &.{
+    "test_0.c",
+    "test_empty_gz.c",
+    "test_empty_lz4.c",
+    "test_empty_xz.c",
+    "test_empty_zstd.c",
+    "test_error.c",
+    "test_error_mixed.c",
+    "test_expand_Z.c",
+    "test_expand_bz2.c",
+    "test_expand_gz.c",
+    "test_expand_lz4.c",
+    "test_expand_mixed.c",
+    "test_expand_plain.c",
+    "test_expand_xz.c",
+    "test_expand_zstd.c",
+    "test_help.c",
+    "test_stdin.c",
+    "test_version.c",
 };
