@@ -130,11 +130,11 @@ pub fn build(b: *std.Build) void {
         .files = bsdtar_src_files,
         .flags = defs,
     });
-    //bsdtar_module.addCSourceFiles(.{
-    //    .root = upstream.path("tar"),
-    //    .files = bsdtar_main,
-    //    .flags = defs,
-    //});
+    bsdtar_module.addCSourceFiles(.{
+        .root = upstream.path("tar"),
+        .files = bsdtar_main,
+        .flags = defs,
+    });
     bsdtar_module.addIncludePath(upstream.path("libarchive"));
     bsdtar_module.linkLibrary(libarchive);
     bsdtar_module.addIncludePath(upstream.path("libarchive_fe"));
@@ -282,7 +282,7 @@ pub fn build(b: *std.Build) void {
     bsdcpio_test_step.dependOn(&bsdcpio_test_run.step);
 
     const bsdtar_test_step = b.step("bsdtar_test", "Run the bsdcpio tests.");
-    //test_step.dependOn(bsdtar_test_step);
+    test_step.dependOn(bsdtar_test_step);
     const bsdtar_test_module = b.createModule(.{
         .target = target,
         .optimize = optimize,
@@ -299,18 +299,12 @@ pub fn build(b: *std.Build) void {
         .flags = defs,
     });
 
-    const bsdtar_lib = b.addLibrary(.{
-        .name = "libbsdtar",
-        .root_module = bsdtar_module,
-        .linkage = .static,
-    });
     bsdtar_test_module.addConfigHeader(config_h);
     bsdtar_test_module.addIncludePath(upstream.path("test_utils"));
     bsdtar_test_module.addIncludePath(upstream.path("libarchive"));
     bsdtar_test_module.addIncludePath(upstream.path("libarchive_fe"));
     bsdtar_test_module.addIncludePath(upstream.path("tar"));
     bsdtar_test_module.addIncludePath(upstream.path("tar/test"));
-    bsdtar_test_module.linkLibrary(bsdtar_lib);
     bsdtar_test_module.linkLibrary(libarchive);
     bsdtar_test_module.linkLibrary(libarchive_fe);
 
@@ -840,12 +834,12 @@ const libarchive_fe_src_files = &.{
     "passphrase.c",
 };
 
-//const bsdtar_main = &.{
-//    "bsdtar.c",
-//};
+const bsdtar_main = &.{
+    "bsdtar.c",
+};
 
 const bsdtar_src_files = &.{
-    "bsdtar.c",
+    //    "bsdtar.c",
     "bsdtar_windows.c",
     "cmdline.c",
     "creation_set.c",
