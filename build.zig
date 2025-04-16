@@ -25,168 +25,170 @@ pub fn build(b: *std.Build) void {
     const defs = &.{"-DHAVE_CONFIG_H=1"};
 
     // The core libarchive module. All other binaries depend on this.
-    const libarchive = b.addModule(package_name, .{
+    const libarchive_module = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    libarchive.addConfigHeader(config_h);
-    libarchive.addCSourceFiles(.{
+    libarchive_module.addConfigHeader(config_h);
+    libarchive_module.addCSourceFiles(.{
         .root = upstream.path("libarchive"),
         .files = libarchive_src_files,
         .flags = defs,
     });
-    libarchive.linkLibrary(zlib.artifact("z"));
+    libarchive_module.linkLibrary(zlib.artifact("z"));
 
-    const libarchive_static = b.addLibrary(.{
+    const libarchive = b.addLibrary(.{
         .name = package_name,
-        .root_module = libarchive,
+        .root_module = libarchive_module,
         .linkage = .static,
     });
-    b.installArtifact(libarchive_static);
+    b.installArtifact(libarchive);
 
     // Common frontend code used in all of the executables (bsdcat, bsdtar, etc.)
-    const libarchive_fe = b.addModule("libarchive_fe", .{
+    const libarchive_fe_module = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    libarchive_fe.addCSourceFiles(.{
+    libarchive_fe_module.addCSourceFiles(.{
         .root = upstream.path("libarchive_fe"),
         .files = libarchive_fe_src_files,
         .flags = defs,
     });
-    libarchive_fe.addConfigHeader(config_h);
+    libarchive_fe_module.addConfigHeader(config_h);
 
-    const libarchive_fe_static = b.addLibrary(.{
+    const libarchive_fe = b.addLibrary(.{
         .name = "libarchive_fe",
-        .root_module = libarchive_fe,
+        .root_module = libarchive_fe_module,
         .linkage = .static,
     });
 
-    const bsdcat = b.addModule("bsdcat", .{
+    const bsdcat_module = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    bsdcat.addConfigHeader(config_h);
-    bsdcat.addCSourceFiles(.{
+    bsdcat_module.addConfigHeader(config_h);
+    bsdcat_module.addCSourceFiles(.{
         .root = upstream.path("cat"),
         .files = bsdcat_src_files,
     });
-    bsdcat.addIncludePath(upstream.path("libarchive"));
-    bsdcat.linkLibrary(libarchive_static);
-    bsdcat.addIncludePath(upstream.path("libarchive_fe"));
-    bsdcat.linkLibrary(libarchive_fe_static);
+    bsdcat_module.addIncludePath(upstream.path("libarchive"));
+    bsdcat_module.linkLibrary(libarchive);
+    bsdcat_module.addIncludePath(upstream.path("libarchive_fe"));
+    bsdcat_module.linkLibrary(libarchive_fe);
 
-    const bsdcat_exe = b.addExecutable(.{
+    const bsdcat = b.addExecutable(.{
         .name = "bsdcat",
-        .root_module = bsdcat,
+        .root_module = bsdcat_module,
     });
-    if (enable_bsdcat) b.installArtifact(bsdcat_exe);
+    if (enable_bsdcat) b.installArtifact(bsdcat);
 
-    const bsdcpio = b.addModule("bsdcpio", .{
+    const bsdcpio_module = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    bsdcpio.addConfigHeader(config_h);
-    bsdcpio.addCSourceFiles(.{
+    bsdcpio_module.addConfigHeader(config_h);
+    bsdcpio_module.addCSourceFiles(.{
         .root = upstream.path("cpio"),
         .files = bsdcpio_src_files,
     });
-    bsdcpio.addIncludePath(upstream.path("libarchive"));
-    bsdcpio.linkLibrary(libarchive_static);
-    bsdcpio.addIncludePath(upstream.path("libarchive_fe"));
-    bsdcpio.linkLibrary(libarchive_fe_static);
+    bsdcpio_module.addIncludePath(upstream.path("libarchive"));
+    bsdcpio_module.linkLibrary(libarchive);
+    bsdcpio_module.addIncludePath(upstream.path("libarchive_fe"));
+    bsdcpio_module.linkLibrary(libarchive_fe);
 
-    const bsdcpio_exe = b.addExecutable(.{
+    const bsdcpio = b.addExecutable(.{
         .name = "bsdcpio",
-        .root_module = bsdcpio,
+        .root_module = bsdcpio_module,
     });
-    if (enable_bsdcpio) b.installArtifact(bsdcpio_exe);
+    if (enable_bsdcpio) b.installArtifact(bsdcpio);
 
-    const bsdtar = b.addModule("bsdtar", .{
+    const bsdtar_module = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    bsdtar.addConfigHeader(config_h);
-    bsdtar.addCSourceFiles(.{
+    bsdtar_module.addConfigHeader(config_h);
+    bsdtar_module.addCSourceFiles(.{
         .root = upstream.path("tar"),
         .files = bsdtar_src_files,
         .flags = defs,
     });
-    bsdtar.addIncludePath(upstream.path("libarchive"));
-    bsdtar.linkLibrary(libarchive_static);
-    bsdtar.addIncludePath(upstream.path("libarchive_fe"));
-    bsdtar.linkLibrary(libarchive_fe_static);
+    bsdtar_module.addIncludePath(upstream.path("libarchive"));
+    bsdtar_module.linkLibrary(libarchive);
+    bsdtar_module.addIncludePath(upstream.path("libarchive_fe"));
+    bsdtar_module.linkLibrary(libarchive_fe);
 
-    const bsdtar_exe = b.addExecutable(.{
+    const bsdtar = b.addExecutable(.{
         .name = "bsdtar",
-        .root_module = bsdtar,
+        .root_module = bsdtar_module,
     });
-    if (enable_bsdtar) b.installArtifact(bsdtar_exe);
+    if (enable_bsdtar) b.installArtifact(bsdtar);
 
-    const bsdunzip = b.addModule("bsdunzip", .{
+    const bsdunzip_module = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    bsdunzip.addConfigHeader(config_h);
-    bsdunzip.addCSourceFiles(.{
+    bsdunzip_module.addConfigHeader(config_h);
+    bsdunzip_module.addCSourceFiles(.{
         .root = upstream.path("unzip"),
         .files = bsdunzip_src_files,
         .flags = defs,
     });
-    bsdunzip.addIncludePath(upstream.path("libarchive"));
-    bsdunzip.linkLibrary(libarchive_static);
-    bsdunzip.addIncludePath(upstream.path("libarchive_fe"));
-    bsdunzip.linkLibrary(libarchive_fe_static);
+    bsdunzip_module.addIncludePath(upstream.path("libarchive"));
+    bsdunzip_module.linkLibrary(libarchive);
+    bsdunzip_module.addIncludePath(upstream.path("libarchive_fe"));
+    bsdunzip_module.linkLibrary(libarchive_fe);
 
-    const bsdunzip_exe = b.addExecutable(.{
+    const bsdunzip = b.addExecutable(.{
         .name = "bsdunzip",
-        .root_module = bsdunzip,
+        .root_module = bsdunzip_module,
     });
-    if (enable_bsdunzip) b.installArtifact(bsdunzip_exe);
+    if (enable_bsdunzip) b.installArtifact(bsdunzip);
 
     const test_step = b.step("test", "Run all of the tests.");
 
-    const libarchive_test_step = b.step("libarchive-test", "Run the libarchive tests.");
+    const libarchive_test_step = b.step("libarchive_test", "Run the libarchive tests.");
     test_step.dependOn(libarchive_test_step);
-    const libarchive_test = b.addModule("libarchive_test", .{
+    const libarchive_test_module = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    libarchive_test.addCSourceFiles(.{
+    libarchive_test_module.addCSourceFiles(.{
         .root = upstream.path("libarchive/test"),
         .files = libarchive_test_src_files,
         .flags = defs,
     });
-    libarchive_test.addCSourceFiles(.{
+    libarchive_test_module.addCSourceFiles(.{
         .root = upstream.path("test_utils"),
         .files = test_utils_src_files,
         .flags = defs,
     });
-    libarchive_test.addCSourceFiles(.{
+    libarchive_test_module.addCSourceFiles(.{
         .root = b.path("disabled_tests/libarchive"),
         .files = libarchive_disabled_test_src,
         .flags = defs,
     });
-    libarchive_test.addConfigHeader(config_h);
-    libarchive_test.addIncludePath(upstream.path("test_utils"));
-    libarchive_test.addIncludePath(upstream.path("libarchive"));
-    libarchive_test.addIncludePath(upstream.path("libarchive/test"));
-    libarchive_test.linkLibrary(libarchive_static);
+    libarchive_test_module.addConfigHeader(config_h);
+    libarchive_test_module.addIncludePath(upstream.path("test_utils"));
+    libarchive_test_module.addIncludePath(upstream.path("libarchive"));
+    libarchive_test_module.addIncludePath(upstream.path("libarchive/test"));
+    libarchive_test_module.linkLibrary(libarchive);
 
-    const libarchive_test_exe = b.addExecutable(.{
+    const libarchive_test = b.addExecutable(.{
         .name = "libarchive_test",
-        .root_module = libarchive_test,
+        .root_module = libarchive_test_module,
     });
-    const libarchive_test_run = b.addRunArtifact(libarchive_test_exe);
+    const libarchive_test_run = b.addRunArtifact(libarchive_test);
     libarchive_test_run.setCwd(upstream.path(""));
     libarchive_test_step.dependOn(&libarchive_test_run.step);
+
+
 }
 
 fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.Build.ResolvedTarget) *std.Build.Step.ConfigHeader {
