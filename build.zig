@@ -121,6 +121,11 @@ pub fn build(b: *std.Build) void {
         .files = bsdtar_src_files,
         .flags = defs,
     });
+    //bsdtar_module.addCSourceFiles(.{
+    //    .root = upstream.path("tar"),
+    //    .files = bsdtar_main,
+    //    .flags = defs,
+    //});
     bsdtar_module.addIncludePath(upstream.path("libarchive"));
     bsdtar_module.linkLibrary(libarchive);
     bsdtar_module.addIncludePath(upstream.path("libarchive_fe"));
@@ -266,6 +271,49 @@ pub fn build(b: *std.Build) void {
     bsdcpio_test_run.addArg("-p");
     bsdcpio_test_run.addArtifactArg(bsdcpio);
     bsdcpio_test_step.dependOn(&bsdcpio_test_run.step);
+
+    const bsdtar_test_step = b.step("bsdtar_test", "Run the bsdcpio tests.");
+    //test_step.dependOn(bsdtar_test_step);
+    const bsdtar_test_module = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    bsdtar_test_module.addCSourceFiles(.{
+        .root = upstream.path("tar/test"),
+        .files = bsdtar_test_src_files,
+        .flags = defs,
+    });
+    bsdtar_test_module.addCSourceFiles(.{
+        .root = upstream.path("test_utils"),
+        .files = test_utils_src_files,
+        .flags = defs,
+    });
+
+    const bsdtar_lib = b.addLibrary(.{
+        .name = "libbsdtar",
+        .root_module = bsdtar_module,
+        .linkage = .static,
+    });
+    bsdtar_test_module.addConfigHeader(config_h);
+    bsdtar_test_module.addIncludePath(upstream.path("test_utils"));
+    bsdtar_test_module.addIncludePath(upstream.path("libarchive"));
+    bsdtar_test_module.addIncludePath(upstream.path("libarchive_fe"));
+    bsdtar_test_module.addIncludePath(upstream.path("tar"));
+    bsdtar_test_module.addIncludePath(upstream.path("tar/test"));
+    bsdtar_test_module.linkLibrary(bsdtar_lib);
+    bsdtar_test_module.linkLibrary(libarchive);
+    bsdtar_test_module.linkLibrary(libarchive_fe);
+
+    const bsdtar_test = b.addExecutable(.{
+        .name = "bsdtar_test",
+        .root_module = bsdtar_test_module,
+    });
+    const bsdtar_test_run = b.addRunArtifact(bsdtar_test);
+    bsdtar_test_run.setCwd(upstream.path(""));
+    bsdtar_test_run.addArg("-p");
+    bsdtar_test_run.addArtifactArg(bsdtar);
+    bsdtar_test_step.dependOn(&bsdtar_test_run.step);
 }
 
 fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.Build.ResolvedTarget) *std.Build.Step.ConfigHeader {
@@ -782,6 +830,10 @@ const libarchive_fe_src_files = &.{
     "line_reader.c",
     "passphrase.c",
 };
+
+//const bsdtar_main = &.{
+//    "bsdtar.c",
+//};
 
 const bsdtar_src_files = &.{
     "bsdtar.c",
@@ -1313,4 +1365,77 @@ const bsdcpio_test_src_files = &.{
     "test_owner_parse.c",
     "test_passthrough_dotdot.c",
     "test_passthrough_reverse.c",
+};
+
+const bsdtar_test_src_files = &.{
+    "test_0.c",
+    "test_basic.c",
+    "test_copy.c",
+    "test_empty_mtree.c",
+    "test_extract_tar_Z.c",
+    "test_extract_tar_bz2.c",
+    "test_extract_tar_grz.c",
+    "test_extract_tar_gz.c",
+    "test_extract_tar_lrz.c",
+    "test_extract_tar_lz.c",
+    "test_extract_tar_lz4.c",
+    "test_extract_tar_lzma.c",
+    "test_extract_tar_lzo.c",
+    "test_extract_tar_xz.c",
+    "test_extract_tar_zstd.c",
+    "test_format_newc.c",
+    "test_help.c",
+    "test_leading_slash.c",
+    "test_list_item.c",
+    "test_missing_file.c",
+    "test_option_C_mtree.c",
+    "test_option_C_upper.c",
+    "test_option_H_upper.c",
+    "test_option_L_upper.c",
+    "test_option_O_upper.c",
+    "test_option_P_upper.c",
+    "test_option_T_upper.c",
+    "test_option_U_upper.c",
+    "test_option_X_upper.c",
+    "test_option_a.c",
+    "test_option_acls.c",
+    "test_option_b.c",
+    "test_option_b64encode.c",
+    "test_option_exclude.c",
+    "test_option_exclude_vcs.c",
+    "test_option_fflags.c",
+    "test_option_gid_gname.c",
+    "test_option_group.c",
+    "test_option_grzip.c",
+    "test_option_ignore_zeros.c",
+    "test_option_j.c",
+    "test_option_k.c",
+    "test_option_keep_newer_files.c",
+    "test_option_lrzip.c",
+    "test_option_lz4.c",
+    "test_option_lzma.c",
+    "test_option_lzop.c",
+    "test_option_n.c",
+    "test_option_newer_than.c",
+    "test_option_nodump.c",
+    "test_option_older_than.c",
+    "test_option_owner.c",
+    "test_option_passphrase.c",
+    "test_option_q.c",
+    "test_option_r.c",
+    "test_option_s.c",
+    "test_option_safe_writes.c",
+    "test_option_uid_uname.c",
+    "test_option_uuencode.c",
+    "test_option_xattrs.c",
+    "test_option_xz.c",
+    "test_option_z.c",
+    "test_option_zstd.c",
+    "test_patterns.c",
+    "test_print_longpath.c",
+    "test_stdio.c",
+    "test_strip_components.c",
+    "test_symlink_dir.c",
+    "test_version.c",
+    "test_windows.c",
 };
