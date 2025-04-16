@@ -95,6 +95,10 @@ pub fn build(b: *std.Build) void {
         .root = upstream.path("cpio"),
         .files = bsdcpio_src_files,
     });
+    bsdcpio_module.addCSourceFiles(.{
+        .root = upstream.path("cpio"),
+        .files = bsdcpio_main,
+    });
     bsdcpio_module.addIncludePath(upstream.path("libarchive"));
     bsdcpio_module.linkLibrary(libarchive);
     bsdcpio_module.addIncludePath(upstream.path("libarchive_fe"));
@@ -221,6 +225,47 @@ pub fn build(b: *std.Build) void {
     bsdcat_test_run.addArg("-p");
     bsdcat_test_run.addArtifactArg(bsdcat);
     bsdcat_test_step.dependOn(&bsdcat_test_run.step);
+
+    const bsdcpio_test_step = b.step("bsdcpio_test", "Run the bsdcpio tests.");
+    test_step.dependOn(bsdcpio_test_step);
+    const bsdcpio_test_module = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    bsdcpio_test_module.addCSourceFiles(.{
+        .root = upstream.path("cpio"),
+        .files = bsdcpio_src_files,
+        .flags = defs,
+    });
+    bsdcpio_test_module.addCSourceFiles(.{
+        .root = upstream.path("cpio/test"),
+        .files = bsdcpio_test_src_files,
+        .flags = defs,
+    });
+    bsdcpio_test_module.addCSourceFiles(.{
+        .root = upstream.path("test_utils"),
+        .files = test_utils_src_files,
+        .flags = defs,
+    });
+    bsdcpio_test_module.addConfigHeader(config_h);
+    bsdcpio_test_module.addIncludePath(upstream.path("test_utils"));
+    bsdcpio_test_module.addIncludePath(upstream.path("libarchive"));
+    bsdcpio_test_module.addIncludePath(upstream.path("libarchive_fe"));
+    bsdcpio_test_module.addIncludePath(upstream.path("cpio"));
+    bsdcpio_test_module.addIncludePath(upstream.path("cpio/test"));
+    bsdcpio_test_module.linkLibrary(libarchive);
+    bsdcpio_test_module.linkLibrary(libarchive_fe);
+
+    const bsdcpio_test = b.addExecutable(.{
+        .name = "bsdcpio_test",
+        .root_module = bsdcpio_test_module,
+    });
+    const bsdcpio_test_run = b.addRunArtifact(bsdcpio_test);
+    bsdcpio_test_run.setCwd(upstream.path(""));
+    bsdcpio_test_run.addArg("-p");
+    bsdcpio_test_run.addArtifactArg(bsdcpio);
+    bsdcpio_test_step.dependOn(&bsdcpio_test_run.step);
 }
 
 fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.Build.ResolvedTarget) *std.Build.Step.ConfigHeader {
@@ -723,9 +768,12 @@ const bsdcat_src_files = &.{
     "cmdline.c",
 };
 
+const bsdcpio_main = &.{
+    "cpio.c",
+};
+
 const bsdcpio_src_files = &.{
     "cmdline.c",
-    "cpio.c",
     "cpio_windows.c",
 };
 
@@ -1213,4 +1261,56 @@ const bsdcat_test_src_files = &.{
     "test_help.c",
     "test_stdin.c",
     "test_version.c",
+};
+
+const bsdcpio_test_src_files = &.{
+    "test_0.c",
+    "test_basic.c",
+    "test_cmdline.c",
+    "test_extract_cpio_Z.c",
+    "test_extract_cpio_absolute_paths.c",
+    "test_extract_cpio_bz2.c",
+    "test_extract_cpio_grz.c",
+    "test_extract_cpio_gz.c",
+    "test_extract_cpio_lrz.c",
+    "test_extract_cpio_lz.c",
+    "test_extract_cpio_lz4.c",
+    "test_extract_cpio_lzma.c",
+    "test_extract_cpio_lzo.c",
+    "test_extract_cpio_xz.c",
+    "test_extract_cpio_zstd.c",
+    "test_format_newc.c",
+    "test_gcpio_compat.c",
+    "test_missing_file.c",
+    "test_option_0.c",
+    "test_option_B_upper.c",
+    "test_option_C_upper.c",
+    "test_option_J_upper.c",
+    "test_option_L_upper.c",
+    "test_option_Z_upper.c",
+    "test_option_a.c",
+    "test_option_b64encode.c",
+    "test_option_c.c",
+    "test_option_d.c",
+    "test_option_f.c",
+    "test_option_grzip.c",
+    "test_option_help.c",
+    "test_option_l.c",
+    "test_option_lrzip.c",
+    "test_option_lz4.c",
+    "test_option_lzma.c",
+    "test_option_lzop.c",
+    "test_option_m.c",
+    "test_option_passphrase.c",
+    "test_option_t.c",
+    "test_option_u.c",
+    "test_option_uuencode.c",
+    "test_option_version.c",
+    "test_option_xz.c",
+    "test_option_y.c",
+    "test_option_z.c",
+    "test_option_zstd.c",
+    "test_owner_parse.c",
+    "test_passthrough_dotdot.c",
+    "test_passthrough_reverse.c",
 };
