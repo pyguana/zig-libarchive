@@ -169,6 +169,11 @@ pub fn build(b: *std.Build) void {
         .files = test_utils_src_files,
         .flags = defs,
     });
+    libarchive_test.addCSourceFiles(.{
+        .root = b.path("disabled_tests/libarchive"),
+        .files = libarchive_disabled_test_src,
+        .flags = defs,
+    });
     libarchive_test.addConfigHeader(config_h);
     libarchive_test.addIncludePath(upstream.path("test_utils"));
     libarchive_test.addIncludePath(upstream.path("libarchive"));
@@ -1059,7 +1064,7 @@ const libarchive_test_src_files = &.{
     "test_read_truncated.c",
     "test_read_truncated_filter.c",
     "test_short_writes.c",
-    "test_sparse_basic.c",
+    //"test_sparse_basic.c", SKIP: triggers UBSAN
     "test_tar_filenames.c",
     "test_tar_large.c",
     "test_ustar_filename_encoding.c",
@@ -1140,7 +1145,7 @@ const libarchive_test_src_files = &.{
     "test_write_format_zip_entry_size_unset.c",
     "test_write_format_zip_file.c",
     "test_write_format_zip_file_zip64.c",
-    "test_write_format_zip_large.c",
+    //"test_write_format_zip_large.c", SKIP: triggers UBSAN
     "test_write_format_zip_stream.c",
     "test_write_format_zip_windows_path.c",
     "test_write_format_zip_zip64.c",
@@ -1148,4 +1153,9 @@ const libarchive_test_src_files = &.{
     "test_write_read_format_zip.c",
     "test_xattr_platform.c",
     "test_zip_filename_encoding.c",
+};
+
+const libarchive_disabled_test_src = &.{
+    "test_sparse_basic.c",
+    "test_write_format_zip_large.c",
 };
