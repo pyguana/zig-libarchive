@@ -317,6 +317,43 @@ pub fn build(b: *std.Build) void {
     bsdtar_test_run.addArg("-p");
     bsdtar_test_run.addArtifactArg(bsdtar);
     bsdtar_test_step.dependOn(&bsdtar_test_run.step);
+
+    const bsdunzip_test_step = b.step("bsdunzip_test", "Run the bsdcpio tests.");
+    test_step.dependOn(bsdunzip_test_step);
+    const bsdunzip_test_module = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    bsdunzip_test_module.addCSourceFiles(.{
+        .root = upstream.path("unzip/test"),
+        .files = bsdunzip_test_src_files,
+        .flags = defs,
+    });
+    bsdunzip_test_module.addCSourceFiles(.{
+        .root = upstream.path("test_utils"),
+        .files = test_utils_src_files,
+        .flags = defs,
+    });
+
+    bsdunzip_test_module.addConfigHeader(config_h);
+    bsdunzip_test_module.addIncludePath(upstream.path("test_utils"));
+    bsdunzip_test_module.addIncludePath(upstream.path("libarchive"));
+    bsdunzip_test_module.addIncludePath(upstream.path("libarchive_fe"));
+    bsdunzip_test_module.addIncludePath(upstream.path("unzip"));
+    bsdunzip_test_module.addIncludePath(upstream.path("unzip/test"));
+    bsdunzip_test_module.linkLibrary(libarchive);
+    bsdunzip_test_module.linkLibrary(libarchive_fe);
+
+    const bsdunzip_test = b.addExecutable(.{
+        .name = "bsdunzip_test",
+        .root_module = bsdunzip_test_module,
+    });
+    const bsdunzip_test_run = b.addRunArtifact(bsdunzip_test);
+    bsdunzip_test_run.setCwd(upstream.path(""));
+    bsdunzip_test_run.addArg("-p");
+    bsdunzip_test_run.addArtifactArg(bsdunzip);
+    bsdunzip_test_step.dependOn(&bsdunzip_test_run.step);
 }
 
 fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.Build.ResolvedTarget) *std.Build.Step.ConfigHeader {
@@ -1441,4 +1478,28 @@ const bsdtar_test_src_files = &.{
     "test_symlink_dir.c",
     "test_version.c",
     "test_windows.c",
+};
+
+const bsdunzip_test_src_files = &.{
+    "test_0.c",
+    "test_C.c",
+    "test_I.c",
+    "test_L.c",
+    "test_P_encryption.c",
+    "test_Z1.c",
+    "test_basic.c",
+    "test_d.c",
+    "test_doubledash.c",
+    "test_glob.c",
+    "test_j.c",
+    "test_n.c",
+    "test_not_exist.c",
+    "test_o.c",
+    "test_p.c",
+    "test_q.c",
+    "test_singlefile.c",
+    "test_t.c",
+    "test_t_bad.c",
+    "test_version.c",
+    "test_x.c",
 };
