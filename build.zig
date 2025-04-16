@@ -22,7 +22,16 @@ pub fn build(b: *std.Build) void {
     const enable_bsdunzip = b.option(bool, "enable-bsdunzip", "enable build of bsdunzip (default: true)") orelse true;
 
     const package_name = package["lib".len..];
-    const defs = &.{ "-DHAVE_CONFIG_H=1", "-fvisibility=hidden", "-D__LIBARCHIVE_ENABLE_VISIBILITY", "-ffunction-sections", "-fdata-sections" };
+    const defs = &.{
+        "-Wall",
+        "-Wformat",
+        "-Wformat-security",
+        "-DHAVE_CONFIG_H=1",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fvisibility=hidden",
+        "-D__LIBARCHIVE_ENABLE_VISIBILITY",
+    };
 
     // The core libarchive module. All other binaries depend on this.
     const libarchive_module = b.createModule(.{
