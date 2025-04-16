@@ -599,7 +599,7 @@ fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.B
         .HAVE_WMEMMOVE = true,
         .HAVE_WORKING_EXT2_IOC_GETFLAGS = true,
         .HAVE_WORKING_FS_IOC_GETFLAGS = true,
-        .HAVE_ZLIB_H = null,
+        .HAVE_ZLIB_H = true,
         .HAVE_ZSTD_H = null,
         .HAVE_ZSTD_compressStream = null,
         .HAVE__FSEEKI64 = null,
