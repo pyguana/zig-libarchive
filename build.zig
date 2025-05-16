@@ -16,9 +16,11 @@ pub fn build(b: *std.Build) void {
     //const run_configure = getRunConfigure(b, upstream);
     //const run_configure_step = &run_configure.step;
 
+    const test_step = b.step("test", "Run all of the tests.");
     _ = b.step("check", "Check that build.zig compiles. Used for analysis by zls.");
 
-    const enable_bsdcat = b.option(bool, "enable-bsdcat", "enable build of bsdcat (default: true)") orelse true;
+    // TODO: Re-enable these
+    // const enable_bsdcat = b.option(bool, "enable-bsdcat", "enable build of bsdcat (default: true)") orelse true;
     const enable_bsdcpio = b.option(bool, "enable-bsdcpio", "enable build of bsdcpio (default: true)") orelse true;
     const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
     const enable_bsdunzip = b.option(bool, "enable-bsdunzip", "enable build of bsdunzip (default: true)") orelse true;
@@ -86,28 +88,131 @@ pub fn build(b: *std.Build) void {
     });
     //libarchive_fe.step.dependOn(run_configure_step);
 
-    const bsdcat_module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    bsdcat_module.addConfigHeader(config_h);
-    bsdcat_module.addIncludePath(upstream.path(""));
-    bsdcat_module.addCSourceFiles(.{
-        .root = upstream.path("cat"),
-        .files = bsdcat_src_files,
-    });
-    bsdcat_module.addIncludePath(upstream.path("libarchive"));
-    bsdcat_module.linkLibrary(libarchive);
-    bsdcat_module.addIncludePath(upstream.path("libarchive_fe"));
-    bsdcat_module.linkLibrary(libarchive_fe);
+    //const bsdcat_module = b.createModule(.{
+    //    .target = target,
+    //    .optimize = optimize,
+    //    .link_libc = true,
+    //});
+    //bsdcat_module.addConfigHeader(config_h);
+    //bsdcat_module.addIncludePath(upstream.path(""));
+    //bsdcat_module.addCSourceFiles(.{
+    //    .root = upstream.path("cat"),
+    //    .files = bsdcat_src_files,
+    //});
+    //bsdcat_module.addIncludePath(upstream.path("libarchive"));
+    //bsdcat_module.linkLibrary(libarchive);
+    //bsdcat_module.addIncludePath(upstream.path("libarchive_fe"));
+    //bsdcat_module.linkLibrary(libarchive_fe);
 
-    const bsdcat = b.addExecutable(.{
-        .name = "bsdcat",
-        .root_module = bsdcat_module,
-    });
-    //bsdcat.step.dependOn(run_configure_step);
-    if (enable_bsdcat) b.installArtifact(bsdcat);
+    //const bsdcat = b.addExecutable(.{
+    //    .name = "bsdcat",
+    //    .root_module = bsdcat_module,
+    //});
+    ////bsdcat.step.dependOn(run_configure_step);
+    //if (enable_bsdcat) b.installArtifact(bsdcat);
+
+    //const bsdcat_test_step = b.step("bsdcat_test", "Run the bsdcat tests.");
+    //test_step.dependOn(bsdcat_test_step);
+    //const bsdcat_test_module = b.createModule(.{
+    //    .target = target,
+    //    .optimize = optimize,
+    //    .link_libc = true,
+    //});
+    //bsdcat_test_module.addCSourceFiles(.{
+    //    .root = upstream.path("cat/test"),
+    //    .files = bsdcat_test_src_files,
+    //    .flags = defs,
+    //});
+    //bsdcat_test_module.addCSourceFiles(.{
+    //    .root = upstream.path("test_utils"),
+    //    .files = test_utils_src_files,
+    //    .flags = defs,
+    //});
+    //bsdcat_test_module.addConfigHeader(config_h);
+    //bsdcat_test_module.addIncludePath(upstream.path(""));
+    //bsdcat_test_module.addIncludePath(upstream.path("test_utils"));
+    //bsdcat_test_module.addIncludePath(upstream.path("libarchive"));
+    //bsdcat_test_module.addIncludePath(upstream.path("cat"));
+    //bsdcat_test_module.addIncludePath(upstream.path("cat/test"));
+    //bsdcat_test_module.linkLibrary(libarchive);
+
+    //const bsdcat_test = b.addExecutable(.{
+    //    .name = "bsdcat_test",
+    //    .root_module = bsdcat_test_module,
+    //});
+    ////bsdcat_test.step.dependOn(run_configure_step);
+    //const bsdcat_test_run = b.addRunArtifact(bsdcat_test);
+    //bsdcat_test_run.setCwd(upstream.path(""));
+    //bsdcat_test_run.addArg("-p");
+    //bsdcat_test_run.addArtifactArg(bsdcat);
+    //bsdcat_test_step.dependOn(&bsdcat_test_run.step);
+
+    //const module_name_list: []const []const u8 = .{ "cat", "cpio", "tar", "unzip" };
+    const module_name_list: []const []const u8 = &.{"cat"};
+    inline for (module_name_list) |mod_name| {
+        // Compile the executables
+        const exe_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
+        exe_module.addConfigHeader(config_h);
+        exe_module.addIncludePath(upstream.path(""));
+        exe_module.addCSourceFiles(.{
+            .root = upstream.path(mod_name),
+            .files = src_map.get(mod_name) orelse unreachable,
+            .flags = defs,
+        });
+        exe_module.addIncludePath(upstream.path("libarchive"));
+        exe_module.linkLibrary(libarchive);
+        exe_module.addIncludePath(upstream.path("libarchive_fe"));
+        exe_module.linkLibrary(libarchive_fe);
+
+        const exe = b.addExecutable(.{
+            .name = "bsd" ++ mod_name,
+            .root_module = exe_module,
+        });
+        b.installArtifact(exe);
+
+        // Compile the executable tests, create a top-level step for them,
+        // and add them to the test step.
+        const test_step_name = "bsd" ++ mod_name ++ "_test";
+        const exe_test_step = b.step(test_step_name, "Run the tests for bsd" ++ mod_name);
+        test_step.dependOn(exe_test_step);
+
+        const test_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
+        test_module.addCSourceFiles(.{
+            .root = upstream.path(mod_name ++ "/test"),
+            .files = test_src_map.get(mod_name) orelse unreachable,
+            .flags = defs,
+        });
+        test_module.addCSourceFiles(.{
+            .root = upstream.path("test_utils"),
+            .files = test_utils_src_files,
+            .flags = defs,
+        });
+        test_module.addConfigHeader(config_h);
+        test_module.addIncludePath(upstream.path(""));
+        test_module.addIncludePath(upstream.path("test_utils"));
+        test_module.addIncludePath(upstream.path("libarchive"));
+        test_module.addIncludePath(upstream.path(mod_name));
+        test_module.addIncludePath(upstream.path(mod_name ++ "/test"));
+        test_module.linkLibrary(libarchive);
+
+        const exe_test = b.addExecutable(.{
+            .name = test_step_name,
+            .root_module = test_module,
+        });
+        const exe_test_run = b.addRunArtifact(exe_test);
+        exe_test_run.setCwd(upstream.path(""));
+        exe_test_run.addArg("-p");
+        exe_test_run.addArtifactArg(exe);
+        exe_test_step.dependOn(&exe_test_run.step);
+    }
 
     const bsdcpio_module = b.createModule(.{
         .target = target,
@@ -189,8 +294,6 @@ pub fn build(b: *std.Build) void {
     //bsdunzip.step.dependOn(run_configure_step);
     if (enable_bsdunzip) b.installArtifact(bsdunzip);
 
-    const test_step = b.step("test", "Run all of the tests.");
-
     const libarchive_test_step = b.step("libarchive_test", "Run the libarchive tests.");
     test_step.dependOn(libarchive_test_step);
     const libarchive_test_module = b.createModule(.{
@@ -228,42 +331,6 @@ pub fn build(b: *std.Build) void {
     const libarchive_test_run = b.addRunArtifact(libarchive_test);
     libarchive_test_run.setCwd(upstream.path(""));
     libarchive_test_step.dependOn(&libarchive_test_run.step);
-
-    const bsdcat_test_step = b.step("bsdcat_test", "Run the bsdcat tests.");
-    test_step.dependOn(bsdcat_test_step);
-    const bsdcat_test_module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    bsdcat_test_module.addCSourceFiles(.{
-        .root = upstream.path("cat/test"),
-        .files = bsdcat_test_src_files,
-        .flags = defs,
-    });
-    bsdcat_test_module.addCSourceFiles(.{
-        .root = upstream.path("test_utils"),
-        .files = test_utils_src_files,
-        .flags = defs,
-    });
-    bsdcat_test_module.addConfigHeader(config_h);
-    bsdcat_test_module.addIncludePath(upstream.path(""));
-    bsdcat_test_module.addIncludePath(upstream.path("test_utils"));
-    bsdcat_test_module.addIncludePath(upstream.path("libarchive"));
-    bsdcat_test_module.addIncludePath(upstream.path("cat"));
-    bsdcat_test_module.addIncludePath(upstream.path("cat/test"));
-    bsdcat_test_module.linkLibrary(libarchive);
-
-    const bsdcat_test = b.addExecutable(.{
-        .name = "bsdcat_test",
-        .root_module = bsdcat_test_module,
-    });
-    //bsdcat_test.step.dependOn(run_configure_step);
-    const bsdcat_test_run = b.addRunArtifact(bsdcat_test);
-    bsdcat_test_run.setCwd(upstream.path(""));
-    bsdcat_test_run.addArg("-p");
-    bsdcat_test_run.addArtifactArg(bsdcat);
-    bsdcat_test_step.dependOn(&bsdcat_test_run.step);
 
     const bsdcpio_test_step = b.step("bsdcpio_test", "Run the bsdcpio tests.");
     test_step.dependOn(bsdcpio_test_step);
@@ -361,7 +428,7 @@ pub fn build(b: *std.Build) void {
     });
     bsdunzip_test_module.addCSourceFiles(.{
         .root = b.path("disabled_tests/bsdunzip"),
-        .files = bsdunzip_test_disabled_src_files,
+        .files = bsdunzip_disabled_test_src_files,
         .flags = defs,
     });
     bsdunzip_test_module.addCSourceFiles(.{
@@ -918,6 +985,13 @@ fn getConfigHeader(b: *std.Build, upstream: *Build.Dependency, target: std.Build
     return b.addConfigHeader(.{ .style = .{ .autoconf = upstream.path("config.h.in") } }, config_options);
 }
 
+const src_map = std.StaticStringMap([]const []const u8).initComptime(.{
+    .{ "cat", bsdcat_src_files },
+    .{ "cpio", bsdcpio_src_files },
+    .{ "tar", bsdtar_src_files },
+    .{ "unzip", bsdunzip_src_files },
+});
+
 const bsdcat_src_files = &.{
     "bsdcat.c",
     "cmdline.c",
@@ -1401,6 +1475,20 @@ const libarchive_test_disabled_src_files = &.{
     "test_write_format_zip_large.c",
 };
 
+const test_src_map = std.StaticStringMap([]const []const u8).initComptime(.{
+    .{ "cat", bsdcat_test_src_files },
+    .{ "cpio", bsdcpio_test_src_files },
+    .{ "tar", bsdtar_test_src_files },
+    .{ "unzip", bsdunzip_test_src_files },
+});
+
+const disabled_test_src_map = std.StaticStringMap([]const []const u8).initComptime(.{
+    .{ "cat", bsdcat_disabled_test_src_files },
+    .{ "cpio", bsdcpio_disabled_test_src_files },
+    .{ "tar", bsdtar_disabled_test_src_files },
+    .{ "unzip", bsdunzip_disabled_test_src_files },
+});
+
 const bsdcat_test_src_files = &.{
     "test_0.c",
     "test_empty_gz.c",
@@ -1421,6 +1509,8 @@ const bsdcat_test_src_files = &.{
     "test_stdin.c",
     "test_version.c",
 };
+
+const bsdcat_disabled_test_src_files = &.{};
 
 const bsdcpio_test_src_files = &.{
     "test_0.c",
@@ -1473,6 +1563,8 @@ const bsdcpio_test_src_files = &.{
     "test_passthrough_dotdot.c",
     "test_passthrough_reverse.c",
 };
+
+const bsdcpio_disabled_test_src_files = &.{};
 
 const bsdtar_test_src_files = &.{
     "test_0.c",
@@ -1547,6 +1639,8 @@ const bsdtar_test_src_files = &.{
     "test_windows.c",
 };
 
+const bsdtar_disabled_test_src_files = &.{};
+
 const bsdunzip_test_src_files = &.{
     "test_0.c",
     "test_C.c",
@@ -1571,12 +1665,13 @@ const bsdunzip_test_src_files = &.{
     "test_x.c",
 };
 
-const bsdunzip_test_disabled_src_files = &.{
+const bsdunzip_disabled_test_src_files = &.{
     "test_P_encryption.c",
 };
 
 const std = @import("std");
 const mem = std.mem;
+const StaticStringMap = std.StaticStringMap;
 const Build = std.Build;
 const Step = Build.Step;
 const PkgConfigError = Build.PkgConfigError;
