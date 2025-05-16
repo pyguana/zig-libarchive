@@ -22,8 +22,8 @@ pub fn build(b: *std.Build) void {
     // TODO: Re-enable these
     // const enable_bsdcat = b.option(bool, "enable-bsdcat", "enable build of bsdcat (default: true)") orelse true;
     // const enable_bsdcpio = b.option(bool, "enable-bsdcpio", "enable build of bsdcpio (default: true)") orelse true;
-    //const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
-    const enable_bsdunzip = b.option(bool, "enable-bsdunzip", "enable build of bsdunzip (default: true)") orelse true;
+    // const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
+    // const enable_bsdunzip = b.option(bool, "enable-bsdunzip", "enable build of bsdunzip (default: true)") orelse true;
 
     const package_name = package["lib".len..];
     const defs = &.{
@@ -89,7 +89,7 @@ pub fn build(b: *std.Build) void {
     //libarchive_fe.step.dependOn(run_configure_step);
 
     //const module_name_list: []const []const u8 = .{ "cat", "cpio", "tar", "unzip" };
-    const module_name_list: []const []const u8 = &.{ "cat", "cpio", "tar" };
+    const module_name_list: []const []const u8 = &.{ "cat", "cpio", "tar", "unzip" };
     inline for (module_name_list) |mod_name| {
         // Compile the executables
         const exe_module = b.createModule(.{
@@ -137,7 +137,7 @@ pub fn build(b: *std.Build) void {
             .flags = defs,
         });
         test_module.addCSourceFiles(.{
-            .root = upstream.path("disabled_tests/" ++ mod_name),
+            .root = b.path("disabled_tests/" ++ mod_name),
             .files = disabled_test_src_map.get(mod_name) orelse unreachable,
             .flags = defs,
         });
@@ -166,35 +166,6 @@ pub fn build(b: *std.Build) void {
         exe_test_run.addArtifactArg(exe);
         exe_test_step.dependOn(&exe_test_run.step);
     }
-
-    const bsdunzip_module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    bsdunzip_module.addConfigHeader(config_h);
-    bsdunzip_module.addIncludePath(upstream.path(""));
-    bsdunzip_module.addCSourceFiles(.{
-        .root = upstream.path("unzip"),
-        .files = bsdunzip_src,
-        .flags = defs,
-    });
-    bsdunzip_module.addCSourceFiles(.{
-        .root = upstream.path("unzip"),
-        .files = bsdunzip_main,
-        .flags = defs,
-    });
-    bsdunzip_module.addIncludePath(upstream.path("libarchive"));
-    bsdunzip_module.linkLibrary(libarchive);
-    bsdunzip_module.addIncludePath(upstream.path("libarchive_fe"));
-    bsdunzip_module.linkLibrary(libarchive_fe);
-
-    const bsdunzip = b.addExecutable(.{
-        .name = "bsdunzip",
-        .root_module = bsdunzip_module,
-    });
-    //bsdunzip.step.dependOn(run_configure_step);
-    if (enable_bsdunzip) b.installArtifact(bsdunzip);
 
     const libarchive_test_step = b.step("libarchive_test", "Run the libarchive tests.");
     test_step.dependOn(libarchive_test_step);
@@ -233,49 +204,6 @@ pub fn build(b: *std.Build) void {
     const libarchive_test_run = b.addRunArtifact(libarchive_test);
     libarchive_test_run.setCwd(upstream.path(""));
     libarchive_test_step.dependOn(&libarchive_test_run.step);
-
-    const bsdunzip_test_step = b.step("bsdunzip_test", "Run the bsdcpio tests.");
-    test_step.dependOn(bsdunzip_test_step);
-    const bsdunzip_test_module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    bsdunzip_test_module.addCSourceFiles(.{
-        .root = upstream.path("unzip/test"),
-        .files = bsdunzip_test_src,
-        .flags = defs,
-    });
-    bsdunzip_test_module.addCSourceFiles(.{
-        .root = b.path("disabled_tests/bsdunzip"),
-        .files = bsdunzip_disabled_test_src,
-        .flags = defs,
-    });
-    bsdunzip_test_module.addCSourceFiles(.{
-        .root = upstream.path("test_utils"),
-        .files = test_utils_src,
-        .flags = defs,
-    });
-
-    bsdunzip_test_module.addConfigHeader(config_h);
-    bsdunzip_test_module.addIncludePath(upstream.path("test_utils"));
-    bsdunzip_test_module.addIncludePath(upstream.path("libarchive"));
-    bsdunzip_test_module.addIncludePath(upstream.path("libarchive_fe"));
-    bsdunzip_test_module.addIncludePath(upstream.path("unzip"));
-    bsdunzip_test_module.addIncludePath(upstream.path("unzip/test"));
-    bsdunzip_test_module.linkLibrary(libarchive);
-    bsdunzip_test_module.linkLibrary(libarchive_fe);
-
-    const bsdunzip_test = b.addExecutable(.{
-        .name = "bsdunzip_test",
-        .root_module = bsdunzip_test_module,
-    });
-    //bsdunzip_test.step.dependOn(run_configure_step);
-    const bsdunzip_test_run = b.addRunArtifact(bsdunzip_test);
-    bsdunzip_test_run.setCwd(upstream.path(""));
-    bsdunzip_test_run.addArg("-p");
-    bsdunzip_test_run.addArtifactArg(bsdunzip);
-    bsdunzip_test_step.dependOn(&bsdunzip_test_run.step);
 }
 
 fn getRunConfigure(b: *std.Build, upstream: *Build.Dependency) *Step.Run {
@@ -1474,27 +1402,27 @@ const bsdtar_test_src: []const []const u8 = &.{
 const bsdtar_disabled_test_src: []const []const u8 = &.{};
 
 const bsdunzip_test_src: []const []const u8 = &.{
-    "test_0.c",
-    "test_C.c",
-    "test_I.c",
-    "test_L.c",
-    //"test_P_encryption.c", SKIPPED due to test failures
-    "test_Z1.c",
-    "test_basic.c",
-    "test_d.c",
-    "test_doubledash.c",
-    "test_glob.c",
-    "test_j.c",
-    "test_n.c",
-    "test_not_exist.c",
-    "test_o.c",
-    "test_p.c",
-    "test_q.c",
-    "test_singlefile.c",
-    "test_t.c",
-    "test_t_bad.c",
-    "test_version.c",
-    "test_x.c",
+    "test/test_0.c",
+    "test/test_C.c",
+    "test/test_I.c",
+    "test/test_L.c",
+    //"test/test_P_encryption.c", SKIPPED due to test failures
+    "test/test_Z1.c",
+    "test/test_basic.c",
+    "test/test_d.c",
+    "test/test_doubledash.c",
+    "test/test_glob.c",
+    "test/test_j.c",
+    "test/test_n.c",
+    "test/test_not_exist.c",
+    "test/test_o.c",
+    "test/test_p.c",
+    "test/test_q.c",
+    "test/test_singlefile.c",
+    "test/test_t.c",
+    "test/test_t_bad.c",
+    "test/test_version.c",
+    "test/test_x.c",
 };
 
 const bsdunzip_disabled_test_src: []const []const u8 = &.{
