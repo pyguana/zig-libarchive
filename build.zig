@@ -22,7 +22,7 @@ pub fn build(b: *std.Build) void {
     // TODO: Re-enable these
     // const enable_bsdcat = b.option(bool, "enable-bsdcat", "enable build of bsdcat (default: true)") orelse true;
     // const enable_bsdcpio = b.option(bool, "enable-bsdcpio", "enable build of bsdcpio (default: true)") orelse true;
-    const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
+    //const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
     const enable_bsdunzip = b.option(bool, "enable-bsdunzip", "enable build of bsdunzip (default: true)") orelse true;
 
     const package_name = package["lib".len..];
@@ -89,7 +89,7 @@ pub fn build(b: *std.Build) void {
     //libarchive_fe.step.dependOn(run_configure_step);
 
     //const module_name_list: []const []const u8 = .{ "cat", "cpio", "tar", "unzip" };
-    const module_name_list: []const []const u8 = &.{ "cat", "cpio" };
+    const module_name_list: []const []const u8 = &.{ "cat", "cpio", "tar" };
     inline for (module_name_list) |mod_name| {
         // Compile the executables
         const exe_module = b.createModule(.{
@@ -150,9 +150,11 @@ pub fn build(b: *std.Build) void {
         test_module.addIncludePath(upstream.path(""));
         test_module.addIncludePath(upstream.path("test_utils"));
         test_module.addIncludePath(upstream.path("libarchive"));
+        test_module.linkLibrary(libarchive);
         test_module.addIncludePath(upstream.path(mod_name));
         test_module.addIncludePath(upstream.path(mod_name ++ "/test"));
-        test_module.linkLibrary(libarchive);
+        test_module.addIncludePath(upstream.path("libarchive_fe"));
+        test_module.linkLibrary(libarchive_fe);
 
         const exe_test = b.addExecutable(.{
             .name = test_step_name,
@@ -164,35 +166,6 @@ pub fn build(b: *std.Build) void {
         exe_test_run.addArtifactArg(exe);
         exe_test_step.dependOn(&exe_test_run.step);
     }
-
-    const bsdtar_module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    bsdtar_module.addConfigHeader(config_h);
-    bsdtar_module.addIncludePath(upstream.path(""));
-    bsdtar_module.addCSourceFiles(.{
-        .root = upstream.path("tar"),
-        .files = bsdtar_src,
-        .flags = defs,
-    });
-    bsdtar_module.addCSourceFiles(.{
-        .root = upstream.path("tar"),
-        .files = bsdtar_main,
-        .flags = defs,
-    });
-    bsdtar_module.addIncludePath(upstream.path("libarchive"));
-    bsdtar_module.linkLibrary(libarchive);
-    bsdtar_module.addIncludePath(upstream.path("libarchive_fe"));
-    bsdtar_module.linkLibrary(libarchive_fe);
-
-    const bsdtar = b.addExecutable(.{
-        .name = "bsdtar",
-        .root_module = bsdtar_module,
-    });
-    //bsdtar.step.dependOn(run_configure_step);
-    if (enable_bsdtar) b.installArtifact(bsdtar);
 
     const bsdunzip_module = b.createModule(.{
         .target = target,
@@ -260,45 +233,6 @@ pub fn build(b: *std.Build) void {
     const libarchive_test_run = b.addRunArtifact(libarchive_test);
     libarchive_test_run.setCwd(upstream.path(""));
     libarchive_test_step.dependOn(&libarchive_test_run.step);
-
-    const bsdtar_test_step = b.step("bsdtar_test", "Run the bsdcpio tests.");
-    test_step.dependOn(bsdtar_test_step);
-    const bsdtar_test_module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    bsdtar_test_module.addCSourceFiles(.{
-        .root = upstream.path("tar/test"),
-        .files = bsdtar_test_src,
-        .flags = defs,
-    });
-    bsdtar_test_module.addCSourceFiles(.{
-        .root = upstream.path("test_utils"),
-        .files = test_utils_src,
-        .flags = defs,
-    });
-
-    bsdtar_test_module.addConfigHeader(config_h);
-    bsdtar_test_module.addIncludePath(upstream.path(""));
-    bsdtar_test_module.addIncludePath(upstream.path("test_utils"));
-    bsdtar_test_module.addIncludePath(upstream.path("libarchive"));
-    bsdtar_test_module.addIncludePath(upstream.path("libarchive_fe"));
-    bsdtar_test_module.addIncludePath(upstream.path("tar"));
-    bsdtar_test_module.addIncludePath(upstream.path("tar/test"));
-    bsdtar_test_module.linkLibrary(libarchive);
-    bsdtar_test_module.linkLibrary(libarchive_fe);
-
-    const bsdtar_test = b.addExecutable(.{
-        .name = "bsdtar_test",
-        .root_module = bsdtar_test_module,
-    });
-    //bsdtar_test.step.dependOn(run_configure_step);
-    const bsdtar_test_run = b.addRunArtifact(bsdtar_test);
-    bsdtar_test_run.setCwd(upstream.path(""));
-    bsdtar_test_run.addArg("-p");
-    bsdtar_test_run.addArtifactArg(bsdtar);
-    bsdtar_test_step.dependOn(&bsdtar_test_run.step);
 
     const bsdunzip_test_step = b.step("bsdunzip_test", "Run the bsdcpio tests.");
     test_step.dependOn(bsdunzip_test_step);
@@ -1465,76 +1399,76 @@ const bsdcpio_test_src: []const []const u8 = &.{
 const bsdcpio_disabled_test_src: []const []const u8 = &.{};
 
 const bsdtar_test_src: []const []const u8 = &.{
-    "test_0.c",
-    "test_basic.c",
-    "test_copy.c",
-    "test_empty_mtree.c",
-    "test_extract_tar_Z.c",
-    "test_extract_tar_bz2.c",
-    "test_extract_tar_grz.c",
-    "test_extract_tar_gz.c",
-    "test_extract_tar_lrz.c",
-    "test_extract_tar_lz.c",
-    "test_extract_tar_lz4.c",
-    "test_extract_tar_lzma.c",
-    "test_extract_tar_lzo.c",
-    "test_extract_tar_xz.c",
-    "test_extract_tar_zstd.c",
-    "test_format_newc.c",
-    "test_help.c",
-    "test_leading_slash.c",
-    "test_list_item.c",
-    "test_missing_file.c",
-    "test_option_C_mtree.c",
-    "test_option_C_upper.c",
-    "test_option_H_upper.c",
-    "test_option_L_upper.c",
-    "test_option_O_upper.c",
-    "test_option_P_upper.c",
-    "test_option_T_upper.c",
-    "test_option_U_upper.c",
-    "test_option_X_upper.c",
-    "test_option_a.c",
-    "test_option_acls.c",
-    "test_option_b.c",
-    "test_option_b64encode.c",
-    "test_option_exclude.c",
-    "test_option_exclude_vcs.c",
-    "test_option_fflags.c",
-    "test_option_gid_gname.c",
-    "test_option_group.c",
-    "test_option_grzip.c",
-    "test_option_ignore_zeros.c",
-    "test_option_j.c",
-    "test_option_k.c",
-    "test_option_keep_newer_files.c",
-    "test_option_lrzip.c",
-    "test_option_lz4.c",
-    "test_option_lzma.c",
-    "test_option_lzop.c",
-    "test_option_n.c",
-    "test_option_newer_than.c",
-    "test_option_nodump.c",
-    "test_option_older_than.c",
-    "test_option_owner.c",
-    "test_option_passphrase.c",
-    "test_option_q.c",
-    "test_option_r.c",
-    "test_option_s.c",
-    "test_option_safe_writes.c",
-    "test_option_uid_uname.c",
-    "test_option_uuencode.c",
-    "test_option_xattrs.c",
-    "test_option_xz.c",
-    "test_option_z.c",
-    "test_option_zstd.c",
-    "test_patterns.c",
-    "test_print_longpath.c",
-    "test_stdio.c",
-    "test_strip_components.c",
-    "test_symlink_dir.c",
-    "test_version.c",
-    "test_windows.c",
+    "test/test_0.c",
+    "test/test_basic.c",
+    "test/test_copy.c",
+    "test/test_empty_mtree.c",
+    "test/test_extract_tar_Z.c",
+    "test/test_extract_tar_bz2.c",
+    "test/test_extract_tar_grz.c",
+    "test/test_extract_tar_gz.c",
+    "test/test_extract_tar_lrz.c",
+    "test/test_extract_tar_lz.c",
+    "test/test_extract_tar_lz4.c",
+    "test/test_extract_tar_lzma.c",
+    "test/test_extract_tar_lzo.c",
+    "test/test_extract_tar_xz.c",
+    "test/test_extract_tar_zstd.c",
+    "test/test_format_newc.c",
+    "test/test_help.c",
+    "test/test_leading_slash.c",
+    "test/test_list_item.c",
+    "test/test_missing_file.c",
+    "test/test_option_C_mtree.c",
+    "test/test_option_C_upper.c",
+    "test/test_option_H_upper.c",
+    "test/test_option_L_upper.c",
+    "test/test_option_O_upper.c",
+    "test/test_option_P_upper.c",
+    "test/test_option_T_upper.c",
+    "test/test_option_U_upper.c",
+    "test/test_option_X_upper.c",
+    "test/test_option_a.c",
+    "test/test_option_acls.c",
+    "test/test_option_b.c",
+    "test/test_option_b64encode.c",
+    "test/test_option_exclude.c",
+    "test/test_option_exclude_vcs.c",
+    "test/test_option_fflags.c",
+    "test/test_option_gid_gname.c",
+    "test/test_option_group.c",
+    "test/test_option_grzip.c",
+    "test/test_option_ignore_zeros.c",
+    "test/test_option_j.c",
+    "test/test_option_k.c",
+    "test/test_option_keep_newer_files.c",
+    "test/test_option_lrzip.c",
+    "test/test_option_lz4.c",
+    "test/test_option_lzma.c",
+    "test/test_option_lzop.c",
+    "test/test_option_n.c",
+    "test/test_option_newer_than.c",
+    "test/test_option_nodump.c",
+    "test/test_option_older_than.c",
+    "test/test_option_owner.c",
+    "test/test_option_passphrase.c",
+    "test/test_option_q.c",
+    "test/test_option_r.c",
+    "test/test_option_s.c",
+    "test/test_option_safe_writes.c",
+    "test/test_option_uid_uname.c",
+    "test/test_option_uuencode.c",
+    "test/test_option_xattrs.c",
+    "test/test_option_xz.c",
+    "test/test_option_z.c",
+    "test/test_option_zstd.c",
+    "test/test_patterns.c",
+    "test/test_print_longpath.c",
+    "test/test_stdio.c",
+    "test/test_strip_components.c",
+    "test/test_symlink_dir.c",
+    "test/test_version.c",
+    "test/test_windows.c",
 };
 
 const bsdtar_disabled_test_src: []const []const u8 = &.{};
