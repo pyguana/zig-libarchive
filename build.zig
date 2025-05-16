@@ -49,6 +49,7 @@ pub fn build(b: *std.Build) void {
         .flags = defs,
     });
     libarchive_module.linkLibrary(zlib.artifact("z"));
+    libarchive_module.linkSystemLibrary("xml-2.0", .{ .use_pkg_config = .force });
 
     const libarchive = b.addLibrary(.{
         .name = package_name,
@@ -399,12 +400,27 @@ fn getRunConfigure(b: *std.Build, upstream: *Build.Dependency) *Step.Run {
     const zig_exe_slice = zig_exe[0..zig_exe.len];
     run_step.setEnvironmentVariable("CC", b.fmt("{s} cc", .{zig_exe_slice}));
 
-    const pkg_config = b.findProgram(&.{"pkg-config"}, &.{});
-    if (pkg_config) |pc| {
-        run_step.setEnvironmentVariable("PKG_CONFIG", pc);
-    } else |_| {}
+    const pkg_config = b.graph.env_map.get("PKG_CONFIG") orelse b.findProgram(&.{ "pkgconf", "pkg-config" }, &.{}) catch
+        @panic("Could not find pkgconf or pkg-config. pkg-config is currently required for building zig-libarchive.");
+    run_step.setEnvironmentVariable("PKG_CONFIG", pkg_config);
 
     return run_step;
+}
+
+fn execPkgConfigList(b: *std.Build, pkg_config_exe: []const u8, out_code: *u8) (PkgConfigError || RunError)![]const PkgConfigPkg {
+    const stdout = try b.runAllowFail(&[_][]const u8{ pkg_config_exe, "--list-all" }, out_code, .Ignore);
+    var list = std.ArrayList(PkgConfigPkg).init(b.allocator);
+    errdefer list.deinit();
+    var line_it = mem.tokenizeAny(u8, stdout, "\r\n");
+    while (line_it.next()) |line| {
+        if (mem.trim(u8, line, " \t").len == 0) continue;
+        var tok_it = mem.tokenizeAny(u8, line, " \t");
+        try list.append(PkgConfigPkg{
+            .name = tok_it.next() orelse return error.PkgConfigInvalidOutput,
+            .desc = tok_it.rest(),
+        });
+    }
+    return list.toOwnedSlice();
 }
 
 fn getConfigHeader(b: *std.Build, upstream: *Build.Dependency, target: std.Build.ResolvedTarget) *Build.Step.ConfigHeader {
@@ -1560,5 +1576,9 @@ const bsdunzip_test_disabled_src_files = &.{
 };
 
 const std = @import("std");
+const mem = std.mem;
 const Build = std.Build;
 const Step = Build.Step;
+const PkgConfigError = Build.PkgConfigError;
+const RunError = Build.RunError;
+const PkgConfigPkg = Build.PkgConfigPkg;
