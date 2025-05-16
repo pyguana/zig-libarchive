@@ -1,5 +1,3 @@
-const std = @import("std");
-
 const package = "libarchive";
 const version: std.SemanticVersion = .{
     .major = 3,
@@ -14,7 +12,9 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const config_h = getConfigHeader(b, upstream, target);
+    //const config_h = getConfigHeader(b, upstream, target);
+    const run_configure = getRunConfigure(b, upstream);
+    const run_configure_step = &run_configure.step;
 
     _ = b.step("check", "Check that build.zig compiles. Used for analysis by zls.");
 
@@ -41,7 +41,8 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
-    libarchive_module.addConfigHeader(config_h);
+    //libarchive_module.addConfigHeader(config_h);
+    libarchive_module.addIncludePath(upstream.path(""));
     libarchive_module.addCSourceFiles(.{
         .root = upstream.path("libarchive"),
         .files = libarchive_src_files,
@@ -60,6 +61,7 @@ pub fn build(b: *std.Build) void {
             "archive_entry.h",
         },
     });
+    libarchive.step.dependOn(run_configure_step);
     b.installArtifact(libarchive);
 
     // Common frontend code used in all of the executables (bsdcat, bsdtar, etc.)
@@ -73,20 +75,23 @@ pub fn build(b: *std.Build) void {
         .files = libarchive_fe_src_files,
         .flags = defs,
     });
-    libarchive_fe_module.addConfigHeader(config_h);
+    libarchive_fe_module.addIncludePath(upstream.path(""));
+    //libarchive_fe_module.addConfigHeader(config_h);
 
     const libarchive_fe = b.addLibrary(.{
         .name = "libarchive_fe",
         .root_module = libarchive_fe_module,
         .linkage = .static,
     });
+    libarchive_fe.step.dependOn(run_configure_step);
 
     const bsdcat_module = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    bsdcat_module.addConfigHeader(config_h);
+    //bsdcat_module.addConfigHeader(config_h);
+    bsdcat_module.addIncludePath(upstream.path(""));
     bsdcat_module.addCSourceFiles(.{
         .root = upstream.path("cat"),
         .files = bsdcat_src_files,
@@ -100,6 +105,7 @@ pub fn build(b: *std.Build) void {
         .name = "bsdcat",
         .root_module = bsdcat_module,
     });
+    bsdcat.step.dependOn(run_configure_step);
     if (enable_bsdcat) b.installArtifact(bsdcat);
 
     const bsdcpio_module = b.createModule(.{
@@ -107,7 +113,8 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
-    bsdcpio_module.addConfigHeader(config_h);
+    //bsdcpio_module.addConfigHeader(config_h);
+    bsdcpio_module.addIncludePath(upstream.path(""));
     bsdcpio_module.addCSourceFiles(.{
         .root = upstream.path("cpio"),
         .files = bsdcpio_src_files,
@@ -125,6 +132,7 @@ pub fn build(b: *std.Build) void {
         .name = "bsdcpio",
         .root_module = bsdcpio_module,
     });
+    bsdcpio.step.dependOn(run_configure_step);
     if (enable_bsdcpio) b.installArtifact(bsdcpio);
 
     const bsdtar_module = b.createModule(.{
@@ -132,7 +140,8 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
-    bsdtar_module.addConfigHeader(config_h);
+    //bsdtar_module.addConfigHeader(config_h);
+    bsdtar_module.addIncludePath(upstream.path(""));
     bsdtar_module.addCSourceFiles(.{
         .root = upstream.path("tar"),
         .files = bsdtar_src_files,
@@ -152,6 +161,7 @@ pub fn build(b: *std.Build) void {
         .name = "bsdtar",
         .root_module = bsdtar_module,
     });
+    bsdtar.step.dependOn(run_configure_step);
     if (enable_bsdtar) b.installArtifact(bsdtar);
 
     const bsdunzip_module = b.createModule(.{
@@ -159,7 +169,8 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
-    bsdunzip_module.addConfigHeader(config_h);
+    //bsdunzip_module.addConfigHeader(config_h);
+    bsdunzip_module.addIncludePath(upstream.path(""));
     bsdunzip_module.addCSourceFiles(.{
         .root = upstream.path("unzip"),
         .files = bsdunzip_src_files,
@@ -174,6 +185,7 @@ pub fn build(b: *std.Build) void {
         .name = "bsdunzip",
         .root_module = bsdunzip_module,
     });
+    bsdunzip.step.dependOn(run_configure_step);
     if (enable_bsdunzip) b.installArtifact(bsdunzip);
 
     const test_step = b.step("test", "Run all of the tests.");
@@ -200,7 +212,8 @@ pub fn build(b: *std.Build) void {
         .files = libarchive_test_disabled_src_files,
         .flags = defs,
     });
-    libarchive_test_module.addConfigHeader(config_h);
+    //libarchive_test_module.addConfigHeader(config_h);
+    libarchive_test_module.addIncludePath(upstream.path(""));
     libarchive_test_module.addIncludePath(upstream.path("test_utils"));
     libarchive_test_module.addIncludePath(upstream.path("libarchive"));
     libarchive_test_module.addIncludePath(upstream.path("libarchive/test"));
@@ -210,6 +223,7 @@ pub fn build(b: *std.Build) void {
         .name = "libarchive_test",
         .root_module = libarchive_test_module,
     });
+    libarchive_test.step.dependOn(run_configure_step);
     const libarchive_test_run = b.addRunArtifact(libarchive_test);
     libarchive_test_run.setCwd(upstream.path(""));
     libarchive_test_step.dependOn(&libarchive_test_run.step);
@@ -231,7 +245,8 @@ pub fn build(b: *std.Build) void {
         .files = test_utils_src_files,
         .flags = defs,
     });
-    bsdcat_test_module.addConfigHeader(config_h);
+    //bsdcat_test_module.addConfigHeader(config_h);
+    bsdcat_test_module.addIncludePath(upstream.path(""));
     bsdcat_test_module.addIncludePath(upstream.path("test_utils"));
     bsdcat_test_module.addIncludePath(upstream.path("libarchive"));
     bsdcat_test_module.addIncludePath(upstream.path("cat"));
@@ -242,6 +257,7 @@ pub fn build(b: *std.Build) void {
         .name = "bsdcat_test",
         .root_module = bsdcat_test_module,
     });
+    bsdcat_test.step.dependOn(run_configure_step);
     const bsdcat_test_run = b.addRunArtifact(bsdcat_test);
     bsdcat_test_run.setCwd(upstream.path(""));
     bsdcat_test_run.addArg("-p");
@@ -270,7 +286,8 @@ pub fn build(b: *std.Build) void {
         .files = test_utils_src_files,
         .flags = defs,
     });
-    bsdcpio_test_module.addConfigHeader(config_h);
+    //bsdcpio_test_module.addConfigHeader(config_h);
+    bsdcpio_test_module.addIncludePath(upstream.path(""));
     bsdcpio_test_module.addIncludePath(upstream.path("test_utils"));
     bsdcpio_test_module.addIncludePath(upstream.path("libarchive"));
     bsdcpio_test_module.addIncludePath(upstream.path("libarchive_fe"));
@@ -283,6 +300,7 @@ pub fn build(b: *std.Build) void {
         .name = "bsdcpio_test",
         .root_module = bsdcpio_test_module,
     });
+    bsdcpio_test.step.dependOn(run_configure_step);
     const bsdcpio_test_run = b.addRunArtifact(bsdcpio_test);
     bsdcpio_test_run.setCwd(upstream.path(""));
     bsdcpio_test_run.addArg("-p");
@@ -307,7 +325,8 @@ pub fn build(b: *std.Build) void {
         .flags = defs,
     });
 
-    bsdtar_test_module.addConfigHeader(config_h);
+    //bsdtar_test_module.addConfigHeader(config_h);
+    bsdtar_test_module.addIncludePath(upstream.path(""));
     bsdtar_test_module.addIncludePath(upstream.path("test_utils"));
     bsdtar_test_module.addIncludePath(upstream.path("libarchive"));
     bsdtar_test_module.addIncludePath(upstream.path("libarchive_fe"));
@@ -320,6 +339,7 @@ pub fn build(b: *std.Build) void {
         .name = "bsdtar_test",
         .root_module = bsdtar_test_module,
     });
+    bsdtar_test.step.dependOn(run_configure_step);
     const bsdtar_test_run = b.addRunArtifact(bsdtar_test);
     bsdtar_test_run.setCwd(upstream.path(""));
     bsdtar_test_run.addArg("-p");
@@ -349,7 +369,7 @@ pub fn build(b: *std.Build) void {
         .flags = defs,
     });
 
-    bsdunzip_test_module.addConfigHeader(config_h);
+    //bsdunzip_test_module.addConfigHeader(config_h);
     bsdunzip_test_module.addIncludePath(upstream.path("test_utils"));
     bsdunzip_test_module.addIncludePath(upstream.path("libarchive"));
     bsdunzip_test_module.addIncludePath(upstream.path("libarchive_fe"));
@@ -362,6 +382,7 @@ pub fn build(b: *std.Build) void {
         .name = "bsdunzip_test",
         .root_module = bsdunzip_test_module,
     });
+    bsdunzip_test.step.dependOn(run_configure_step);
     const bsdunzip_test_run = b.addRunArtifact(bsdunzip_test);
     bsdunzip_test_run.setCwd(upstream.path(""));
     bsdunzip_test_run.addArg("-p");
@@ -369,7 +390,24 @@ pub fn build(b: *std.Build) void {
     bsdunzip_test_step.dependOn(&bsdunzip_test_run.step);
 }
 
-fn getConfigHeader(b: *std.Build, upstream: *std.Build.Dependency, target: std.Build.ResolvedTarget) *std.Build.Step.ConfigHeader {
+fn getRunConfigure(b: *std.Build, upstream: *Build.Dependency) *Step.Run {
+    const run_step = Step.Run.create(b, "run configure script");
+    run_step.setCwd(upstream.path(""));
+    run_step.addArg("./configure");
+
+    const zig_exe = b.graph.zig_exe;
+    const zig_exe_slice = zig_exe[0..zig_exe.len];
+    run_step.setEnvironmentVariable("CC", b.fmt("{s} cc", .{zig_exe_slice}));
+
+    const pkg_config = b.findProgram(&.{"pkg-config"}, &.{});
+    if (pkg_config) |pc| {
+        run_step.setEnvironmentVariable("PKG_CONFIG", pc);
+    } else |_| {}
+
+    return run_step;
+}
+
+fn getConfigHeader(b: *std.Build, upstream: *Build.Dependency, target: std.Build.ResolvedTarget) *Build.Step.ConfigHeader {
     const config_options = .{
         .ARCHIVE_ACL_DARWIN = null,
         .ARCHIVE_ACL_FREEBSD = null,
@@ -1520,3 +1558,7 @@ const bsdunzip_test_src_files = &.{
 const bsdunzip_test_disabled_src_files = &.{
     "test_P_encryption.c",
 };
+
+const std = @import("std");
+const Build = std.Build;
+const Step = Build.Step;
