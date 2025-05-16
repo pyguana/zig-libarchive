@@ -16,6 +16,8 @@ pub fn build(b: *std.Build) void {
 
     const config_h = getConfigHeader(b, upstream, target);
 
+    _ = b.step("check", "Check that build.zig compiles. Used for analysis by zls.");
+
     const enable_bsdcat = b.option(bool, "enable-bsdcat", "enable build of bsdcat (default: true)") orelse true;
     const enable_bsdcpio = b.option(bool, "enable-bsdcpio", "enable build of bsdcpio (default: true)") orelse true;
     const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
