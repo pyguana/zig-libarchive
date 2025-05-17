@@ -6,14 +6,14 @@ const version: std.SemanticVersion = .{
 };
 const version_string = std.fmt.comptimePrint("{}", .{version});
 
-/// Executables that are built
-const Exe = enum {
+/// Executables that are built by libarchive
+const LibArchiveExe = enum {
     cat,
     cpio,
     tar,
     unzip,
 };
-const exe_tags = std.meta.fields(Exe);
+const la_exe_fields = std.meta.fields(LibArchiveExe);
 
 pub fn build(b: *std.Build) void {
     const upstream = b.dependency(package, .{});
@@ -100,9 +100,9 @@ pub fn build(b: *std.Build) void {
     });
     //libarchive_fe.step.dependOn(run_configure_step);
 
-    inline for (exe_tags) |exe_fields| {
-        const exe_name = exe_fields.name;
-        const exe_tag: Exe = @enumFromInt(exe_fields.value);
+    inline for (la_exe_fields) |la_exe| {
+        const exe_name = la_exe.name;
+        const exe_tag: LibArchiveExe = @enumFromInt(la_exe.value);
         // Compile the executables
         const exe_module = b.createModule(.{
             .target = target,
@@ -745,14 +745,14 @@ fn getConfigHeader(b: *std.Build, upstream: *Build.Dependency, target: std.Build
     return b.addConfigHeader(.{ .style = .{ .autoconf = upstream.path("config.h.in") } }, config_options);
 }
 
-const main_src_map = std.EnumArray(Exe, []const []const u8).init(.{
+const main_src_map = std.EnumArray(LibArchiveExe, []const []const u8).init(.{
     .cat = bsdcat_main,
     .cpio = bsdcpio_main,
     .tar = bsdtar_main,
     .unzip = bsdunzip_main,
 });
 
-const src_map = std.EnumArray(Exe, []const []const u8).init(.{
+const src_map = std.EnumArray(LibArchiveExe, []const []const u8).init(.{
     .cat = bsdcat_src,
     .cpio = bsdcpio_src,
     .tar = bsdtar_src,
@@ -1247,14 +1247,14 @@ const libarchive_test_disabled_src: []const []const u8 = &.{
     "test_write_format_zip_large.c",
 };
 
-const test_src_map = std.EnumArray(Exe, []const []const u8).init(.{
+const test_src_map = std.EnumArray(LibArchiveExe, []const []const u8).init(.{
     .cat = bsdcat_test_src,
     .cpio = bsdcpio_test_src ++ bsdcpio_test_src,
     .tar = bsdtar_test_src,
     .unzip = bsdunzip_test_src,
 });
 
-const disabled_test_src_map = std.EnumArray(Exe, []const []const u8).init(.{
+const disabled_test_src_map = std.EnumArray(LibArchiveExe, []const []const u8).init(.{
     .cat = bsdcat_disabled_test_src,
     .cpio = bsdcpio_disabled_test_src,
     .tar = bsdtar_disabled_test_src,
