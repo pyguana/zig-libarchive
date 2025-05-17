@@ -1236,10 +1236,10 @@ const libarchive_test_disabled_src: []const []const u8 = &.{
 };
 
 const test_src_map = StaticStringMap([]const []const u8).initComptime(.{
-    .{ "cat", bsdcat_src ++ bsdcat_test_src },
+    .{ "cat", bsdcat_test_src },
     .{ "cpio", bsdcpio_src ++ bsdcpio_test_src },
-    .{ "tar", bsdtar_src ++ bsdtar_test_src },
-    .{ "unzip", bsdunzip_src ++ bsdunzip_test_src },
+    .{ "tar", bsdtar_test_src },
+    .{ "unzip", bsdunzip_test_src },
 });
 
 const disabled_test_src_map = StaticStringMap([]const []const u8).initComptime(.{
