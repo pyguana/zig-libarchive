@@ -100,8 +100,9 @@ pub fn build(b: *std.Build) void {
     });
     //libarchive_fe.step.dependOn(run_configure_step);
 
-    inline for (exe_tags) |tag_field| {
-        const exe_name = tag_field.name;
+    inline for (exe_tags) |exe_fields| {
+        const exe_name = exe_fields.name;
+        const exe_tag: Exe = @enumFromInt(exe_fields.value);
         // Compile the executables
         const exe_module = b.createModule(.{
             .target = target,
@@ -112,12 +113,12 @@ pub fn build(b: *std.Build) void {
         exe_module.addIncludePath(upstream.path(""));
         exe_module.addCSourceFiles(.{
             .root = upstream.path(exe_name),
-            .files = src_map.get(exe_name) orelse unreachable,
+            .files = src_map.get(exe_tag),
             .flags = defs,
         });
         exe_module.addCSourceFiles(.{
             .root = upstream.path(exe_name),
-            .files = main_src_map.get(exe_name) orelse unreachable,
+            .files = main_src_map.get(exe_tag),
             .flags = defs,
         });
         exe_module.addIncludePath(upstream.path("libarchive"));
@@ -144,12 +145,12 @@ pub fn build(b: *std.Build) void {
         });
         test_module.addCSourceFiles(.{
             .root = upstream.path(exe_name),
-            .files = test_src_map.get(exe_name) orelse unreachable,
+            .files = test_src_map.get(exe_tag),
             .flags = defs,
         });
         test_module.addCSourceFiles(.{
             .root = b.path("disabled_tests/" ++ exe_name),
-            .files = disabled_test_src_map.get(exe_name) orelse unreachable,
+            .files = disabled_test_src_map.get(exe_tag),
             .flags = defs,
         });
         test_module.addCSourceFiles(.{
@@ -744,18 +745,18 @@ fn getConfigHeader(b: *std.Build, upstream: *Build.Dependency, target: std.Build
     return b.addConfigHeader(.{ .style = .{ .autoconf = upstream.path("config.h.in") } }, config_options);
 }
 
-const main_src_map = StaticStringMap([]const []const u8).initComptime(.{
-    .{ "cat", bsdcat_main },
-    .{ "cpio", bsdcpio_main },
-    .{ "tar", bsdtar_main },
-    .{ "unzip", bsdunzip_main },
+const main_src_map = std.EnumArray(Exe, []const []const u8).init(.{
+    .cat = bsdcat_main,
+    .cpio = bsdcpio_main,
+    .tar = bsdtar_main,
+    .unzip = bsdunzip_main,
 });
 
-const src_map = StaticStringMap([]const []const u8).initComptime(.{
-    .{ "cat", bsdcat_src },
-    .{ "cpio", bsdcpio_src },
-    .{ "tar", bsdtar_src },
-    .{ "unzip", bsdunzip_src },
+const src_map = std.EnumArray(Exe, []const []const u8).init(.{
+    .cat = bsdcat_src,
+    .cpio = bsdcpio_src,
+    .tar = bsdtar_src,
+    .unzip = bsdunzip_src,
 });
 
 const bsdcat_main: []const []const u8 = &.{
@@ -1246,18 +1247,18 @@ const libarchive_test_disabled_src: []const []const u8 = &.{
     "test_write_format_zip_large.c",
 };
 
-const test_src_map = StaticStringMap([]const []const u8).initComptime(.{
-    .{ "cat", bsdcat_test_src },
-    .{ "cpio", bsdcpio_src ++ bsdcpio_test_src },
-    .{ "tar", bsdtar_test_src },
-    .{ "unzip", bsdunzip_test_src },
+const test_src_map = std.EnumArray(Exe, []const []const u8).init(.{
+    .cat = bsdcat_test_src,
+    .cpio = bsdcpio_test_src ++ bsdcpio_test_src,
+    .tar = bsdtar_test_src,
+    .unzip = bsdunzip_test_src,
 });
 
-const disabled_test_src_map = StaticStringMap([]const []const u8).initComptime(.{
-    .{ "cat", bsdcat_disabled_test_src },
-    .{ "cpio", bsdcpio_disabled_test_src },
-    .{ "tar", bsdtar_disabled_test_src },
-    .{ "unzip", bsdunzip_disabled_test_src },
+const disabled_test_src_map = std.EnumArray(Exe, []const []const u8).init(.{
+    .cat = bsdcat_disabled_test_src,
+    .cpio = bsdcpio_disabled_test_src,
+    .tar = bsdtar_disabled_test_src,
+    .unzip = bsdunzip_disabled_test_src,
 });
 
 const bsdcat_test_src: []const []const u8 = &.{
@@ -1442,7 +1443,6 @@ const bsdunzip_disabled_test_src: []const []const u8 = &.{
 
 const std = @import("std");
 const mem = std.mem;
-const StaticStringMap = std.StaticStringMap;
 const Build = std.Build;
 const Step = Build.Step;
 const PkgConfigError = Build.PkgConfigError;
