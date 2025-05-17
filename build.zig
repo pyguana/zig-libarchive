@@ -6,6 +6,15 @@ const version: std.SemanticVersion = .{
 };
 const version_string = std.fmt.comptimePrint("{}", .{version});
 
+/// Executables that are built
+const Exe = enum {
+    cat,
+    cpio,
+    tar,
+    unzip,
+};
+const exe_tags = std.meta.fields(Exe);
+
 pub fn build(b: *std.Build) void {
     const upstream = b.dependency(package, .{});
     const zlib = b.dependency("zlib", .{});
@@ -20,10 +29,10 @@ pub fn build(b: *std.Build) void {
     _ = b.step("check", "Check that build.zig compiles. Used for analysis by zls.");
 
     // TODO: Re-enable these
-    // const enable_bsdcat = b.option(bool, "enable-bsdcat", "enable build of bsdcat (default: true)") orelse true;
-    // const enable_bsdcpio = b.option(bool, "enable-bsdcpio", "enable build of bsdcpio (default: true)") orelse true;
-    // const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
-    // const enable_bsdunzip = b.option(bool, "enable-bsdunzip", "enable build of bsdunzip (default: true)") orelse true;
+    //const enable_bsdcat = b.option(bool, "enable-bsdcat", "enable build of bsdcat (default: true)") orelse true;
+    //const enable_bsdcpio = b.option(bool, "enable-bsdcpio", "enable build of bsdcpio (default: true)") orelse true;
+    //const enable_bsdtar = b.option(bool, "enable-bsdtar", "enable build of bsdtar (default: true)") orelse true;
+    //const enable_bsdunzip = b.option(bool, "enable-bsdunzip", "enable build of bsdunzip (default: true)") orelse true;
 
     const package_name = package["lib".len..];
     const defs = &.{
@@ -35,6 +44,9 @@ pub fn build(b: *std.Build) void {
         "-fdata-sections",
         "-fvisibility=hidden",
         "-D__LIBARCHIVE_ENABLE_VISIBILITY",
+
+        // TODO: This last flags is only used for statically linked exes/libs. Change when we start building dynamic libs.
+        "-DLIBARCHIVE_STATIC",
     };
 
     // The core libarchive module. All other binaries depend on this.
@@ -88,9 +100,8 @@ pub fn build(b: *std.Build) void {
     });
     //libarchive_fe.step.dependOn(run_configure_step);
 
-    //const module_name_list: []const []const u8 = .{ "cat", "cpio", "tar", "unzip" };
-    const module_name_list: []const []const u8 = &.{ "cat", "cpio", "tar", "unzip" };
-    inline for (module_name_list) |mod_name| {
+    inline for (exe_tags) |tag_field| {
+        const exe_name = tag_field.name;
         // Compile the executables
         const exe_module = b.createModule(.{
             .target = target,
@@ -100,13 +111,13 @@ pub fn build(b: *std.Build) void {
         exe_module.addConfigHeader(config_h);
         exe_module.addIncludePath(upstream.path(""));
         exe_module.addCSourceFiles(.{
-            .root = upstream.path(mod_name),
-            .files = src_map.get(mod_name) orelse unreachable,
+            .root = upstream.path(exe_name),
+            .files = src_map.get(exe_name) orelse unreachable,
             .flags = defs,
         });
         exe_module.addCSourceFiles(.{
-            .root = upstream.path(mod_name),
-            .files = main_src_map.get(mod_name) orelse unreachable,
+            .root = upstream.path(exe_name),
+            .files = main_src_map.get(exe_name) orelse unreachable,
             .flags = defs,
         });
         exe_module.addIncludePath(upstream.path("libarchive"));
@@ -115,15 +126,15 @@ pub fn build(b: *std.Build) void {
         exe_module.linkLibrary(libarchive_fe);
 
         const exe = b.addExecutable(.{
-            .name = "bsd" ++ mod_name,
+            .name = "bsd" ++ exe_name,
             .root_module = exe_module,
         });
         b.installArtifact(exe);
 
         // Compile the executable tests, create a top-level step for them,
         // and add them to the test step.
-        const test_step_name = "bsd" ++ mod_name ++ "_test";
-        const exe_test_step = b.step(test_step_name, "Run the tests for bsd" ++ mod_name);
+        const test_step_name = "bsd" ++ exe_name ++ "_test";
+        const exe_test_step = b.step(test_step_name, "Run the tests for bsd" ++ exe_name);
         test_step.dependOn(exe_test_step);
 
         const test_module = b.createModule(.{
@@ -132,13 +143,13 @@ pub fn build(b: *std.Build) void {
             .link_libc = true,
         });
         test_module.addCSourceFiles(.{
-            .root = upstream.path(mod_name),
-            .files = test_src_map.get(mod_name) orelse unreachable,
+            .root = upstream.path(exe_name),
+            .files = test_src_map.get(exe_name) orelse unreachable,
             .flags = defs,
         });
         test_module.addCSourceFiles(.{
-            .root = b.path("disabled_tests/" ++ mod_name),
-            .files = disabled_test_src_map.get(mod_name) orelse unreachable,
+            .root = b.path("disabled_tests/" ++ exe_name),
+            .files = disabled_test_src_map.get(exe_name) orelse unreachable,
             .flags = defs,
         });
         test_module.addCSourceFiles(.{
@@ -151,8 +162,8 @@ pub fn build(b: *std.Build) void {
         test_module.addIncludePath(upstream.path("test_utils"));
         test_module.addIncludePath(upstream.path("libarchive"));
         test_module.linkLibrary(libarchive);
-        test_module.addIncludePath(upstream.path(mod_name));
-        test_module.addIncludePath(upstream.path(mod_name ++ "/test"));
+        test_module.addIncludePath(upstream.path(exe_name));
+        test_module.addIncludePath(upstream.path(exe_name ++ "/test"));
         test_module.addIncludePath(upstream.path("libarchive_fe"));
         test_module.linkLibrary(libarchive_fe);
 
